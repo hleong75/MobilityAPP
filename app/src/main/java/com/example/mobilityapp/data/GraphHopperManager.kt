@@ -22,6 +22,7 @@ object GraphHopperManager {
     private const val ENCODERS = "foot"
     private const val ENCODED_VALUES = "foot_access,foot_average_speed"
     private const val PROFILE_CONFIG_KEY = "profile"
+    private const val MILLIS_TO_SECONDS = 1000
 
     private var hopper: GraphHopperGtfs? = null
 
@@ -44,12 +45,7 @@ object GraphHopperManager {
                 putObject("graph.location", graphCacheDir.absolutePath)
                 putObject("datareader.file", osmFile.absolutePath)
                 putObject("gtfs.file", gtfsFile.absolutePath)
-                putObject("graph.flag_encoders", ENCODERS)
-                putObject("graph.encoded_values", ENCODED_VALUES)
-                putObject(PROFILE_CONFIG_KEY, listOf(
-                    mapOf("name" to PROFILE_FOOT, "vehicle" to "foot", "weighting" to "shortest"),
-                    mapOf("name" to PROFILE_PT, "vehicle" to "pt", "weighting" to "shortest")
-                ))
+                applyProfiles(this)
             }
 
             val gtfsHopper = GraphHopperGtfs(config)
@@ -83,12 +79,7 @@ object GraphHopperManager {
     private fun loadGraph(cacheDir: File) {
         val graph = GraphHopperGtfs(GraphHopperConfig().apply {
             putObject("graph.location", cacheDir.absolutePath)
-            putObject("graph.flag_encoders", ENCODERS)
-            putObject("graph.encoded_values", ENCODED_VALUES)
-            putObject(PROFILE_CONFIG_KEY, listOf(
-                mapOf("name" to PROFILE_FOOT, "vehicle" to "foot", "weighting" to "shortest"),
-                mapOf("name" to PROFILE_PT, "vehicle" to "pt", "weighting" to "shortest")
-            ))
+            applyProfiles(this)
         })
         graph.load(cacheDir.absolutePath)
         hopper = graph
@@ -101,21 +92,30 @@ object GraphHopperManager {
             Instruction(
                 text = it.text,
                 distanceMeters = it.distance,
-                durationSeconds = it.time / 1000
+                durationSeconds = it.time / MILLIS_TO_SECONDS
             )
         }
         val leg = Leg(
             mode = mode,
             instructions = instructions,
             distanceMeters = path.distance,
-            durationSeconds = path.time / 1000
+            durationSeconds = path.time / MILLIS_TO_SECONDS
         )
         return Itinerary(
             legs = listOf(leg),
             startTime = null,
             endTime = null,
             distanceMeters = path.distance,
-            durationSeconds = path.time / 1000
+            durationSeconds = path.time / MILLIS_TO_SECONDS
         )
+    }
+
+    private fun applyProfiles(config: GraphHopperConfig) {
+        config.putObject("graph.flag_encoders", ENCODERS)
+        config.putObject("graph.encoded_values", ENCODED_VALUES)
+        config.putObject(PROFILE_CONFIG_KEY, listOf(
+            mapOf("name" to PROFILE_FOOT, "vehicle" to "foot", "weighting" to "shortest"),
+            mapOf("name" to PROFILE_PT, "vehicle" to "pt", "weighting" to "shortest")
+        ))
     }
 }
