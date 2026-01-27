@@ -29,6 +29,9 @@ import java.io.File
 
 private const val MBTILES_FILE_NAME = "city_map.mbtiles"
 private const val TILEJSON_VERSION = "2.2.0"
+private const val TILE_SIZE_PX = 256
+private const val OFFLINE_SOURCE_ID = "offline-raster"
+private const val OFFLINE_LAYER_ID = "offline-layer"
 
 @Composable
 fun OfflineMapScreen() {
@@ -58,8 +61,8 @@ private fun OfflineMapView(mbtilesFile: File) {
     LaunchedEffect(mapView, currentFile) {
         val fileUri = Uri.fromFile(currentFile).toString()
         val tileSet = TileSet(TILEJSON_VERSION, fileUri)
-        val rasterSource = RasterSource("offline-raster", tileSet, 256)
-        val rasterLayer = RasterLayer("offline-layer", "offline-raster")
+        val rasterSource = RasterSource(OFFLINE_SOURCE_ID, tileSet, TILE_SIZE_PX)
+        val rasterLayer = RasterLayer(OFFLINE_LAYER_ID, OFFLINE_SOURCE_ID)
         mapView.getMapAsync { mapboxMap ->
             mapboxMap.setStyle(
                 Style.Builder()
@@ -76,9 +79,9 @@ private fun OfflineMapView(mbtilesFile: File) {
 }
 
 private fun resolveMbtiles(context: Context): File? {
-    val publicDir = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
-    val appDir = context.getExternalFilesDir(null)
-    val candidates = listOfNotNull(publicDir, appDir)
+    val downloadsDir = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
+    val defaultAppDir = context.getExternalFilesDir(null)
+    val candidates = listOfNotNull(downloadsDir, defaultAppDir)
     return candidates
         .map { File(it, MBTILES_FILE_NAME) }
         .firstOrNull { it.isFile && it.canRead() && it.length() > 0L }
