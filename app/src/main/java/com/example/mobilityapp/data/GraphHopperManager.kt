@@ -16,6 +16,7 @@ import java.io.File
 import java.util.Date
 
 object GraphHopperManager {
+    private const val DEFAULT_USE_MMAP_STORE = true
     private const val PROFILE_FOOT = "foot"
     private const val PROFILE_PT = "pt"
     private const val GRAPH_CACHE_DIR = "graph-cache"
@@ -26,10 +27,10 @@ object GraphHopperManager {
 
     private var hopper: GraphHopperGtfs? = null
 
-    fun init(path: String) {
+    fun init(path: String, useMmapStore: Boolean = DEFAULT_USE_MMAP_STORE) {
         val cacheDir = File(path, GRAPH_CACHE_DIR)
         if (cacheDir.exists()) {
-            loadGraph(cacheDir)
+            loadGraph(cacheDir, useMmapStore)
         }
     }
 
@@ -37,7 +38,8 @@ object GraphHopperManager {
         osmFile: File,
         gtfsFile: File,
         graphRoot: File,
-        scope: CoroutineScope = CoroutineScope(Dispatchers.IO)
+        scope: CoroutineScope = CoroutineScope(Dispatchers.IO),
+        useMmapStore: Boolean = DEFAULT_USE_MMAP_STORE
     ) {
         scope.launch {
             val graphCacheDir = File(graphRoot, GRAPH_CACHE_DIR)
@@ -45,6 +47,7 @@ object GraphHopperManager {
                 putObject("graph.location", graphCacheDir.absolutePath)
                 putObject("datareader.file", osmFile.absolutePath)
                 putObject("gtfs.file", gtfsFile.absolutePath)
+                putObject("graph.dataaccess", dataAccessType(useMmapStore))
                 applyProfiles(this)
             }
 
@@ -76,9 +79,10 @@ object GraphHopperManager {
         return mapResponse(response, mode)
     }
 
-    private fun loadGraph(cacheDir: File) {
+    private fun loadGraph(cacheDir: File, useMmapStore: Boolean) {
         val graph = GraphHopperGtfs(GraphHopperConfig().apply {
             putObject("graph.location", cacheDir.absolutePath)
+            putObject("graph.dataaccess", dataAccessType(useMmapStore))
             applyProfiles(this)
         })
         graph.load(cacheDir.absolutePath)
@@ -118,4 +122,9 @@ object GraphHopperManager {
             mapOf("name" to PROFILE_PT, "vehicle" to "pt", "weighting" to "shortest")
         ))
     }
+
+    private fun dataAccessType(useMmapStore: Boolean): String {
+        return if (useMmapStore) "MMAP_STORE" else "RAM_STORE"
+    }
+
 }
