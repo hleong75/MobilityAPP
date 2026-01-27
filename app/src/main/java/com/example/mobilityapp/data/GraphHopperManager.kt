@@ -30,8 +30,13 @@ object GraphHopperManager {
     private const val ENCODED_VALUES = "foot_access,foot_average_speed,foot_priority"
     private const val MILLIS_TO_SECONDS = 1000.0
 
+    @Volatile
     private var hopper: GraphHopperGtfs? = null
+
+    @Volatile
     private var ptRouter: PtRouter? = null
+
+    @Volatile
     private var graphConfig: GraphHopperConfig? = null
 
     fun init(path: String, useMmapStore: Boolean = DEFAULT_USE_MMAP_STORE) {
@@ -61,9 +66,12 @@ object GraphHopperManager {
             val gtfsHopper = GraphHopperGtfs(config)
             gtfsHopper.init(config)
             gtfsHopper.importOrLoad()
-            hopper = gtfsHopper
-            graphConfig = config
-            ptRouter = buildPtRouter(config, gtfsHopper)
+            val router = buildPtRouter(config, gtfsHopper)
+            synchronized(this@GraphHopperManager) {
+                hopper = gtfsHopper
+                graphConfig = config
+                ptRouter = router
+            }
         }
     }
 
@@ -78,7 +86,9 @@ object GraphHopperManager {
         val hopperInstance = hopper ?: return null
         val response = if (mode == TravelMode.PT) {
             val config = graphConfig ?: return null
-            val router = ptRouter ?: buildPtRouter(config, hopperInstance).also { ptRouter = it }
+            val router = ptRouter ?: synchronized(this@GraphHopperManager) {
+                ptRouter ?: buildPtRouter(config, hopperInstance).also { ptRouter = it }
+            }
             val request = Request(listOf(
                 GHPointLocation(GHPoint(startLat, startLon)),
                 GHPointLocation(GHPoint(endLat, endLon))
@@ -103,9 +113,12 @@ object GraphHopperManager {
         val graph = GraphHopperGtfs(config)
         graph.init(config)
         graph.load()
-        hopper = graph
-        graphConfig = config
-        ptRouter = buildPtRouter(config, graph)
+        val router = buildPtRouter(config, graph)
+        synchronized(this@GraphHopperManager) {
+            hopper = graph
+            graphConfig = config
+            ptRouter = router
+        }
     }
 
     private fun mapResponse(response: GHResponse, mode: TravelMode): Itinerary? {
