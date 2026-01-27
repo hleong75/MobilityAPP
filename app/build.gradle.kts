@@ -48,7 +48,9 @@ dependencies {
     implementation("androidx.compose.material3:material3")
 
     implementation("com.graphhopper:graphhopper-core:9.1")
+    implementation("com.graphhopper:graphhopper-gtfs:9.1")
     implementation("org.maplibre.gl:android-sdk:11.2.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
