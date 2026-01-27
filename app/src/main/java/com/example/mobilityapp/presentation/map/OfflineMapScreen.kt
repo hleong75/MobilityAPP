@@ -56,7 +56,7 @@ private fun OfflineMapView(mbtilesFile: File) {
     val mapView = rememberMapViewWithLifecycle()
     val currentFile by rememberUpdatedState(mbtilesFile)
     LaunchedEffect(mapView, currentFile) {
-        val fileUri = currentFile.toURI().toString()
+        val fileUri = Uri.fromFile(currentFile).toString()
         val tileSet = TileSet(TILEJSON_VERSION, fileUri)
         val rasterSource = RasterSource("offline-raster", tileSet, 256)
         val rasterLayer = RasterLayer("offline-layer", "offline-raster")
