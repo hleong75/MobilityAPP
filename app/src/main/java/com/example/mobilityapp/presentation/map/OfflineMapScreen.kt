@@ -25,6 +25,8 @@ import org.maplibre.android.style.sources.RasterSource
 import org.maplibre.android.style.sources.TileSet
 import java.io.File
 
+private const val MBTILES_FILE_NAME = "city_map.mbtiles"
+
 @Composable
 fun OfflineMapScreen() {
     val context = LocalContext.current
@@ -74,7 +76,7 @@ private fun resolveMbtiles(context: Context): File? {
     val appDir = context.getExternalFilesDir(null)
     val candidates = listOfNotNull(publicDir, appDir)
     return candidates
-        .map { File(it, "city_map.mbtiles") }
+        .map { File(it, MBTILES_FILE_NAME) }
         .firstOrNull { it.exists() }
 }
 
@@ -84,7 +86,7 @@ private fun rememberMapViewWithLifecycle(): MapView {
     val mapView = remember {
         MapLibre.getInstance(context)
         MapView(context).apply {
-            onCreate(null)
+            onCreate(android.os.Bundle())
         }
     }
     DisposableEffect(mapView) {
