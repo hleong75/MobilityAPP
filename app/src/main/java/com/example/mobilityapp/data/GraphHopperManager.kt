@@ -16,6 +16,7 @@ import java.io.File
 import java.util.Date
 
 object GraphHopperManager {
+    private const val DEFAULT_USE_MMAP_STORE = true
     private const val PROFILE_FOOT = "foot"
     private const val PROFILE_PT = "pt"
     private const val GRAPH_CACHE_DIR = "graph-cache"
@@ -129,5 +130,4 @@ object GraphHopperManager {
         return if (useMmapStore) "MMAP_STORE" else "RAM_STORE"
     }
 
-    private const val DEFAULT_USE_MMAP_STORE = true
 }
