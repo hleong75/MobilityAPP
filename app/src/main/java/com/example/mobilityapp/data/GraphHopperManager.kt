@@ -73,9 +73,11 @@ object GraphHopperManager {
         }
         val request = GHRequest(startLat, startLon, endLat, endLon)
             .setProfile(profile)
-            .putHint(Parameters.PT.EARLIEST_DEPARTURE_TIME, time)
+        if (mode == TravelMode.PT) {
+            request.putHint(Parameters.PT.EARLIEST_DEPARTURE_TIME, time)
+        }
         val response = hopperInstance.route(request)
-        return mapResponse(response)
+        return mapResponse(response, mode)
     }
 
     private fun loadGraph(cacheDir: File) {
@@ -92,7 +94,7 @@ object GraphHopperManager {
         hopper = graph
     }
 
-    private fun mapResponse(response: GHResponse): Itinerary? {
+    private fun mapResponse(response: GHResponse, mode: TravelMode): Itinerary? {
         if (response.hasErrors()) return null
         val path = response.best ?: return null
         val instructions = path.instructions.map {
@@ -101,11 +103,6 @@ object GraphHopperManager {
                 distanceMeters = it.distance,
                 durationSeconds = it.time / 1000
             )
-        }
-        val mode = if (path.description?.contains(PROFILE_PT, ignoreCase = true) == true) {
-            TravelMode.PT
-        } else {
-            TravelMode.FOOT
         }
         val leg = Leg(
             mode = mode,
