@@ -134,6 +134,7 @@ object GraphHopperManager {
     }
 
     private fun applyProfiles(config: GraphHopperConfig) {
+        config.putObject("import.osm.ignored_highways", "")
         config.putObject("graph.encoded_values", ENCODED_VALUES)
         config.setProfiles(
             listOf(

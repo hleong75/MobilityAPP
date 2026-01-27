@@ -64,10 +64,12 @@ private fun OfflineMapView(mbtilesFile: File) {
         val rasterSource = RasterSource(OFFLINE_SOURCE_ID, tileSet, TILE_SIZE_PX)
         val rasterLayer = RasterLayer(OFFLINE_LAYER_ID, OFFLINE_SOURCE_ID)
         mapView.getMapAsync { mapboxMap ->
-            mapboxMap.setStyle(Style.Builder().apply {
-                withSource(rasterSource)
-                withLayer(rasterLayer)
-            })
+            mapboxMap.setStyle(
+                Style.Builder().apply {
+                    withSource(rasterSource)
+                    withLayer(rasterLayer)
+                }
+            )
         }
     }
     AndroidView(
