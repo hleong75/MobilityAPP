@@ -25,8 +25,10 @@ object GraphHopperManager {
     private const val MILLIS_TO_SECONDS = 1000.0
 
     private var hopper: GraphHopperGtfs? = null
+    private var useMmapStore: Boolean = true
 
-    fun init(path: String) {
+    fun init(path: String, useMmapStore: Boolean = this.useMmapStore) {
+        this.useMmapStore = useMmapStore
         val cacheDir = File(path, GRAPH_CACHE_DIR)
         if (cacheDir.exists()) {
             loadGraph(cacheDir)
@@ -37,14 +39,17 @@ object GraphHopperManager {
         osmFile: File,
         gtfsFile: File,
         graphRoot: File,
-        scope: CoroutineScope = CoroutineScope(Dispatchers.IO)
+        scope: CoroutineScope = CoroutineScope(Dispatchers.IO),
+        useMmapStore: Boolean = this.useMmapStore
     ) {
+        this.useMmapStore = useMmapStore
         scope.launch {
             val graphCacheDir = File(graphRoot, GRAPH_CACHE_DIR)
             val config = GraphHopperConfig().apply {
                 putObject("graph.location", graphCacheDir.absolutePath)
                 putObject("datareader.file", osmFile.absolutePath)
                 putObject("gtfs.file", gtfsFile.absolutePath)
+                putObject("graph.dataaccess", dataAccessType(useMmapStore))
                 applyProfiles(this)
             }
 
@@ -79,6 +84,7 @@ object GraphHopperManager {
     private fun loadGraph(cacheDir: File) {
         val graph = GraphHopperGtfs(GraphHopperConfig().apply {
             putObject("graph.location", cacheDir.absolutePath)
+            putObject("graph.dataaccess", dataAccessType(useMmapStore))
             applyProfiles(this)
         })
         graph.load(cacheDir.absolutePath)
@@ -117,5 +123,9 @@ object GraphHopperManager {
             mapOf("name" to PROFILE_FOOT, "vehicle" to "foot", "weighting" to "shortest"),
             mapOf("name" to PROFILE_PT, "vehicle" to "pt", "weighting" to "shortest")
         ))
+    }
+
+    private fun dataAccessType(useMmapStore: Boolean): String {
+        return if (useMmapStore) "MMAP_STORE" else "RAM_STORE"
     }
 }
