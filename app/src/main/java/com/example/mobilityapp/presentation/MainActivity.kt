@@ -16,20 +16,24 @@ import androidx.core.content.ContextCompat
 import com.example.mobilityapp.presentation.map.OfflineMapScreen
 
 class MainActivity : ComponentActivity() {
+    private val locationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (!isGranted) {
+            showLocationPermissionRequiredMessage()
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val locationPermissionLauncher = registerForActivityResult(
-            ActivityResultContracts.RequestPermission()
-        ) { isGranted ->
-            if (!isGranted) {
-                showLocationPermissionRequiredMessage()
-            }
-        }
         if (ContextCompat.checkSelfPermission(
                 this,
                 Manifest.permission.ACCESS_FINE_LOCATION
             ) != PackageManager.PERMISSION_GRANTED
         ) {
+            if (shouldShowRequestPermissionRationale(Manifest.permission.ACCESS_FINE_LOCATION)) {
+                showLocationPermissionRequiredMessage()
+            }
             locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
         }
         setContent {
