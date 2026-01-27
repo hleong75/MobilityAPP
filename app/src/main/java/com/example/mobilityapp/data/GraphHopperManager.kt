@@ -25,9 +25,9 @@ object GraphHopperManager {
     private const val MILLIS_TO_SECONDS = 1000.0
 
     private var hopper: GraphHopperGtfs? = null
-    private var useMmapStore: Boolean = true
+    private var useMmapStore: Boolean = DEFAULT_USE_MMAP_STORE
 
-    fun init(path: String, useMmapStore: Boolean = this.useMmapStore) {
+    fun init(path: String, useMmapStore: Boolean = DEFAULT_USE_MMAP_STORE) {
         this.useMmapStore = useMmapStore
         val cacheDir = File(path, GRAPH_CACHE_DIR)
         if (cacheDir.exists()) {
@@ -40,7 +40,7 @@ object GraphHopperManager {
         gtfsFile: File,
         graphRoot: File,
         scope: CoroutineScope = CoroutineScope(Dispatchers.IO),
-        useMmapStore: Boolean = this.useMmapStore
+        useMmapStore: Boolean = DEFAULT_USE_MMAP_STORE
     ) {
         this.useMmapStore = useMmapStore
         scope.launch {
@@ -128,4 +128,6 @@ object GraphHopperManager {
     private fun dataAccessType(useMmapStore: Boolean): String {
         return if (useMmapStore) "MMAP_STORE" else "RAM_STORE"
     }
+
+    private const val DEFAULT_USE_MMAP_STORE = true
 }

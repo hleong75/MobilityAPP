@@ -20,7 +20,11 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         val locationPermissionLauncher = registerForActivityResult(
             ActivityResultContracts.RequestPermission()
-        ) { }
+        ) { isGranted ->
+            if (!isGranted) {
+                showLocationPermissionRequiredMessage()
+            }
+        }
         if (ContextCompat.checkSelfPermission(
                 this,
                 Manifest.permission.ACCESS_FINE_LOCATION
@@ -31,6 +35,14 @@ class MainActivity : ComponentActivity() {
         setContent {
             MobilityApp()
         }
+    }
+
+    private fun showLocationPermissionRequiredMessage() {
+        android.widget.Toast.makeText(
+            this,
+            getString(com.example.mobilityapp.R.string.location_permission_required),
+            android.widget.Toast.LENGTH_LONG
+        ).show()
     }
 }
 
