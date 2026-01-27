@@ -7,8 +7,10 @@ import com.example.mobilityapp.domain.model.TravelMode
 import com.graphhopper.GHRequest
 import com.graphhopper.GHResponse
 import com.graphhopper.GraphHopperConfig
+import com.graphhopper.config.Profile
+import com.graphhopper.json.Statement
+import com.graphhopper.util.CustomModel
 import com.graphhopper.gtfs.GraphHopperGtfs
-import com.graphhopper.util.Parameters
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -21,7 +23,7 @@ object GraphHopperManager {
     private const val PROFILE_PT = "pt"
     private const val GRAPH_CACHE_DIR = "graph-cache"
     private const val ENCODERS = "foot"
-    private const val ENCODED_VALUES = "foot_access,foot_average_speed"
+    private const val ENCODED_VALUES = "foot_access,foot_average_speed,foot_priority"
     private const val PROFILE_CONFIG_KEY = "profile"
     private const val MILLIS_TO_SECONDS = 1000.0
 
@@ -72,9 +74,6 @@ object GraphHopperManager {
         }
         val request = GHRequest(startLat, startLon, endLat, endLon)
             .setProfile(profile)
-        if (mode == TravelMode.PT) {
-            request.putHint(Parameters.PT.EARLIEST_DEPARTURE_TIME, time)
-        }
         val response = hopperInstance.route(request)
         return mapResponse(response, mode)
     }
@@ -117,10 +116,37 @@ object GraphHopperManager {
     private fun applyProfiles(config: GraphHopperConfig) {
         config.putObject("graph.flag_encoders", ENCODERS)
         config.putObject("graph.encoded_values", ENCODED_VALUES)
-        config.putObject(PROFILE_CONFIG_KEY, listOf(
-            mapOf("name" to PROFILE_FOOT, "vehicle" to "foot", "weighting" to "shortest"),
-            mapOf("name" to PROFILE_PT, "vehicle" to "pt", "weighting" to "shortest")
-        ))
+        config.setProfiles(
+            listOf(
+                Profile(PROFILE_FOOT)
+                    .setCustomModel(
+                        CustomModel()
+                            .addToPriority(
+                                Statement.If(
+                                    "!foot_access",
+                                    Statement.Op.MULTIPLY,
+                                    "0"
+                                )
+                            )
+                            .addToPriority(
+                                Statement.Else(
+                                    Statement.Op.MULTIPLY,
+                                    "foot_priority"
+                                )
+                            )
+                            .addToSpeed(
+                                Statement.If(
+                                    "true",
+                                    Statement.Op.LIMIT,
+                                    "foot_average_speed"
+                                )
+                            )
+                            .setDistanceInfluence(200.0)
+                    ),
+                Profile(PROFILE_PT)
+                    .setCustomModel(CustomModel())
+            )
+        )
     }
 
     private fun dataAccessType(useMmapStore: Boolean): String {
