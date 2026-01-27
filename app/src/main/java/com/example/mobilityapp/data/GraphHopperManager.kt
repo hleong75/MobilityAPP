@@ -22,7 +22,7 @@ object GraphHopperManager {
     private const val ENCODERS = "foot"
     private const val ENCODED_VALUES = "foot_access,foot_average_speed"
     private const val PROFILE_CONFIG_KEY = "profile"
-    private const val MILLIS_TO_SECONDS = 1000
+    private const val MILLIS_TO_SECONDS = 1000.0
 
     private var hopper: GraphHopperGtfs? = null
 
@@ -92,21 +92,21 @@ object GraphHopperManager {
             Instruction(
                 text = it.text,
                 distanceMeters = it.distance,
-                durationSeconds = it.time / MILLIS_TO_SECONDS
+                durationSeconds = (it.time / MILLIS_TO_SECONDS).toLong()
             )
         }
         val leg = Leg(
             mode = mode,
             instructions = instructions,
             distanceMeters = path.distance,
-            durationSeconds = path.time / MILLIS_TO_SECONDS
+            durationSeconds = (path.time / MILLIS_TO_SECONDS).toLong()
         )
         return Itinerary(
             legs = listOf(leg),
             startTime = null,
             endTime = null,
             distanceMeters = path.distance,
-            durationSeconds = path.time / MILLIS_TO_SECONDS
+            durationSeconds = (path.time / MILLIS_TO_SECONDS).toLong()
         )
     }
 
