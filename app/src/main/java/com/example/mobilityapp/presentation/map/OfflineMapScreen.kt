@@ -16,7 +16,9 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.viewinterop.AndroidView
+import com.example.mobilityapp.R
 import org.maplibre.android.MapLibre
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
@@ -26,6 +28,7 @@ import org.maplibre.android.style.sources.TileSet
 import java.io.File
 
 private const val MBTILES_FILE_NAME = "city_map.mbtiles"
+private const val TILEJSON_VERSION = "2.2.0"
 
 @Composable
 fun OfflineMapScreen() {
@@ -42,7 +45,7 @@ fun OfflineMapScreen() {
 private fun PlaceholderMap() {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Text(
-            text = "Aucune carte locale détectée, veuillez télécharger une zone",
+            text = stringResource(R.string.offline_map_placeholder),
             style = MaterialTheme.typography.bodyLarge
         )
     }
@@ -54,7 +57,7 @@ private fun OfflineMapView(mbtilesFile: File) {
     val currentFile by rememberUpdatedState(mbtilesFile)
     LaunchedEffect(mapView, currentFile) {
         val fileUri = Uri.fromFile(currentFile).toString()
-        val tileSet = TileSet("2.2.0", fileUri)
+        val tileSet = TileSet(TILEJSON_VERSION, fileUri)
         val rasterSource = RasterSource("offline-raster", tileSet, 256)
         val rasterLayer = RasterLayer("offline-layer", "offline-raster")
         mapView.getMapAsync { mapboxMap ->
