@@ -48,7 +48,7 @@ object GraphHopperManager {
                 putObject("graph.encoded_values", ENCODED_VALUES)
                 putObject(PROFILE_CONFIG_KEY, listOf(
                     mapOf("name" to PROFILE_FOOT, "vehicle" to "foot", "weighting" to "shortest"),
-                    mapOf("name" to PROFILE_PT, "vehicle" to "foot", "weighting" to "shortest")
+                    mapOf("name" to PROFILE_PT, "vehicle" to "pt", "weighting" to "shortest")
                 ))
             }
 
@@ -63,11 +63,16 @@ object GraphHopperManager {
         startLon: Double,
         endLat: Double,
         endLon: Double,
-        time: Date
+        time: Date,
+        mode: TravelMode
     ): Itinerary? {
         val hopperInstance = hopper ?: return null
+        val profile = when (mode) {
+            TravelMode.PT -> PROFILE_PT
+            TravelMode.FOOT -> PROFILE_FOOT
+        }
         val request = GHRequest(startLat, startLon, endLat, endLon)
-            .setProfile(PROFILE_PT)
+            .setProfile(profile)
             .putHint(Parameters.PT.EARLIEST_DEPARTURE_TIME, time)
         val response = hopperInstance.route(request)
         return mapResponse(response)
@@ -80,7 +85,7 @@ object GraphHopperManager {
             putObject("graph.encoded_values", ENCODED_VALUES)
             putObject(PROFILE_CONFIG_KEY, listOf(
                 mapOf("name" to PROFILE_FOOT, "vehicle" to "foot", "weighting" to "shortest"),
-                mapOf("name" to PROFILE_PT, "vehicle" to "foot", "weighting" to "shortest")
+                mapOf("name" to PROFILE_PT, "vehicle" to "pt", "weighting" to "shortest")
             ))
         })
         graph.load(cacheDir.absolutePath)
