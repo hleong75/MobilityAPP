@@ -86,12 +86,14 @@ private fun rememberMapViewWithLifecycle(): MapView {
     val mapView = remember {
         MapLibre.getInstance(context)
         MapView(context).apply {
-            onCreate(android.os.Bundle())
+            onCreate(null)
         }
     }
     DisposableEffect(mapView) {
         mapView.onStart()
+        mapView.onResume()
         onDispose {
+            mapView.onPause()
             mapView.onStop()
             mapView.onDestroy()
         }
