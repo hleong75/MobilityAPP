@@ -18,18 +18,23 @@ import com.graphhopper.json.Statement
 import com.graphhopper.util.CustomModel
 import com.graphhopper.util.TranslationMap
 import com.graphhopper.util.shapes.GHPoint
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.Date
 
 object GraphHopperManager {
     private const val DEFAULT_USE_MMAP_STORE = true
     private const val PROFILE_FOOT = "foot"
-    private const val GRAPH_CACHE_DIR = "graph-cache"
+    internal const val GRAPH_CACHE_DIR = "graph-cache"
     private const val ENCODED_VALUES = "foot_access,foot_average_speed,foot_priority"
     private const val MILLIS_TO_SECONDS = 1000.0
+
+    private val _isReady = MutableStateFlow(false)
+    val isReady: StateFlow<Boolean> = _isReady.asStateFlow()
 
     @Volatile
     private var hopper: GraphHopperGtfs? = null
@@ -41,20 +46,22 @@ object GraphHopperManager {
     private var graphConfig: GraphHopperConfig? = null
 
     fun init(path: String, useMmapStore: Boolean = DEFAULT_USE_MMAP_STORE) {
+        if (_isReady.value) {
+            return
+        }
         val cacheDir = File(path, GRAPH_CACHE_DIR)
         if (cacheDir.exists()) {
             loadGraph(cacheDir, useMmapStore)
         }
     }
 
-    fun importData(
+    suspend fun importData(
         osmFile: File,
         gtfsFile: File,
         graphRoot: File,
-        scope: CoroutineScope = CoroutineScope(Dispatchers.IO),
         useMmapStore: Boolean = DEFAULT_USE_MMAP_STORE
     ) {
-        scope.launch {
+        withContext(Dispatchers.IO) {
             val graphCacheDir = File(graphRoot, GRAPH_CACHE_DIR)
             val config = GraphHopperConfig().apply {
                 putObject("graph.location", graphCacheDir.absolutePath)
@@ -72,6 +79,7 @@ object GraphHopperManager {
                 hopper = gtfsHopper
                 graphConfig = config
                 ptRouter = router
+                _isReady.value = true
             }
         }
     }
@@ -119,6 +127,7 @@ object GraphHopperManager {
             hopper = graph
             graphConfig = config
             ptRouter = router
+            _isReady.value = true
         }
     }
 
