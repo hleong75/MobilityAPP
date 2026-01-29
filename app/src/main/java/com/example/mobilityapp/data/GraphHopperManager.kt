@@ -7,13 +7,15 @@ import com.example.mobilityapp.domain.model.TravelMode
 import com.graphhopper.GHRequest
 import com.graphhopper.GHResponse
 import com.graphhopper.GraphHopperConfig
+import com.graphhopper.Trip
 import com.graphhopper.config.Profile
 import com.graphhopper.gtfs.GHPointLocation
+import com.graphhopper.gtfs.GraphHopperGtfs
+import com.graphhopper.gtfs.PtRouterImpl
 import com.graphhopper.gtfs.Request
 import com.graphhopper.json.Statement
 import com.graphhopper.util.CustomModel
 import com.graphhopper.util.shapes.GHPoint
-import com.graphhopper.gtfs.GraphHopperGtfs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -29,6 +31,7 @@ object GraphHopperManager {
     private const val MILLIS_TO_SECONDS = 1000.0
 
     private var hopper: GraphHopperGtfs? = null
+    private var ptRouterFactory: PtRouterImpl.Factory? = null
 
     fun init(path: String, useMmapStore: Boolean = DEFAULT_USE_MMAP_STORE) {
         val cacheDir = File(path, GRAPH_CACHE_DIR)
@@ -57,6 +60,7 @@ object GraphHopperManager {
             val gtfsHopper = GraphHopperGtfs(config)
             gtfsHopper.importOrLoad()
             hopper = gtfsHopper
+            ptRouterFactory = createPtRouterFactory(gtfsHopper)
         }
     }
 
@@ -76,7 +80,7 @@ object GraphHopperManager {
             ), time.toInstant())
             request.setAccessProfile(PROFILE_FOOT)
             request.setEgressProfile(PROFILE_FOOT)
-            hopperInstance.route(request)
+            ptRouterFactory?.createWithoutRealtimeFeed()?.route(request)
         } else {
             val request = GHRequest(startLat, startLon, endLat, endLon)
                 .setProfile(PROFILE_FOOT)
@@ -91,33 +95,58 @@ object GraphHopperManager {
             putObject("graph.dataaccess", dataAccessType(useMmapStore))
             applyProfiles(this)
         })
-        graph.load(cacheDir.absolutePath)
-        hopper = graph
+        if (graph.load()) {
+            hopper = graph
+            ptRouterFactory = createPtRouterFactory(graph)
+        }
     }
 
-    private fun mapResponse(response: GHResponse, mode: TravelMode): Itinerary? {
-        if (response.hasErrors()) return null
+    private fun mapResponse(response: GHResponse?, mode: TravelMode): Itinerary? {
+        if (response == null || response.hasErrors()) return null
         val path = response.best ?: return null
-        val instructions = path.instructions.map {
-            Instruction(
-                text = it.text,
-                distanceMeters = it.distance,
-                durationSeconds = (it.time / MILLIS_TO_SECONDS).toLong()
-            )
+        val (instructions, distanceMeters, durationMillis) = if (mode == TravelMode.PT) {
+            val walkPath = path.legs
+                .filterIsInstance<Trip.WalkLeg>()
+                .firstOrNull()
+                ?.instructions
+            Triple(walkPath?.toDomainInstructions().orEmpty(), path.distance, path.time)
+        } else {
+            Triple(path.instructions.toDomainInstructions(), path.distance, path.time)
         }
         val leg = Leg(
             mode = mode,
             instructions = instructions,
-            distanceMeters = path.distance,
-            durationSeconds = (path.time / MILLIS_TO_SECONDS).toLong()
+            distanceMeters = distanceMeters,
+            durationSeconds = (durationMillis / MILLIS_TO_SECONDS).toLong()
         )
         return Itinerary(
             legs = listOf(leg),
             startTime = null,
             endTime = null,
-            distanceMeters = path.distance,
-            durationSeconds = (path.time / MILLIS_TO_SECONDS).toLong()
+            distanceMeters = distanceMeters,
+            durationSeconds = (durationMillis / MILLIS_TO_SECONDS).toLong()
         )
+    }
+
+    private fun createPtRouterFactory(gtfsHopper: GraphHopperGtfs): PtRouterImpl.Factory {
+        return PtRouterImpl.Factory(
+            gtfsHopper.routerConfig,
+            gtfsHopper.translationMap,
+            gtfsHopper.baseGraph,
+            gtfsHopper.encodingManager,
+            gtfsHopper.locationIndex,
+            gtfsHopper.gtfsStorage
+        )
+    }
+
+    private fun com.graphhopper.util.InstructionList.toDomainInstructions(): List<Instruction> {
+        return map { instruction ->
+            Instruction(
+                text = instruction.turnDescription(tr),
+                distanceMeters = instruction.distance,
+                durationSeconds = (instruction.time / MILLIS_TO_SECONDS).toLong()
+            )
+        }
     }
 
     private fun applyProfiles(config: GraphHopperConfig) {

@@ -68,7 +68,6 @@ private fun OfflineMapView(mbtilesFile: File) {
                 Style.Builder()
                     .withSource(rasterSource)
                     .withLayer(rasterLayer)
-                    .build()
             )
         }
     }
