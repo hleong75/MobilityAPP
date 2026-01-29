@@ -39,6 +39,7 @@ import org.maplibre.android.style.layers.PropertyFactory.lineCap
 import org.maplibre.android.style.layers.PropertyFactory.lineColor
 import org.maplibre.android.style.layers.PropertyFactory.lineJoin
 import org.maplibre.android.style.layers.PropertyFactory.lineWidth
+import org.maplibre.android.style.layers.Property
 import org.maplibre.android.style.sources.RasterSource
 import org.maplibre.android.style.sources.TileSet
 import org.maplibre.android.style.sources.GeoJsonSource
@@ -119,8 +120,8 @@ private fun OfflineMapView(mbtilesFile: File, mapViewModel: MapViewModel) {
                         LineLayer(ROUTE_LAYER_BORDER_ID, ROUTE_SOURCE_ID).withProperties(
                             lineColor("#1c3f7a"),
                             lineWidth(8f),
-                            lineCap(PropertyFactory.LINE_CAP_ROUND),
-                            lineJoin(PropertyFactory.LINE_JOIN_ROUND)
+                            lineCap(Property.LINE_CAP_ROUND),
+                            lineJoin(Property.LINE_JOIN_ROUND)
                         ),
                         OFFLINE_LAYER_ID
                     )
@@ -128,8 +129,8 @@ private fun OfflineMapView(mbtilesFile: File, mapViewModel: MapViewModel) {
                         LineLayer(ROUTE_LAYER_ID, ROUTE_SOURCE_ID).withProperties(
                             lineColor("#2b74ff"),
                             lineWidth(5f),
-                            lineCap(PropertyFactory.LINE_CAP_ROUND),
-                            lineJoin(PropertyFactory.LINE_JOIN_ROUND)
+                            lineCap(Property.LINE_CAP_ROUND),
+                            lineJoin(Property.LINE_JOIN_ROUND)
                         ),
                         ROUTE_LAYER_BORDER_ID
                     )
