@@ -29,7 +29,7 @@ import java.util.Date
 object GraphHopperManager {
     private const val DEFAULT_USE_MMAP_STORE = true
     private const val PROFILE_FOOT = "foot"
-    private const val GRAPH_CACHE_DIR = "graph-cache"
+    internal const val GRAPH_CACHE_DIR = "graph-cache"
     private const val ENCODED_VALUES = "foot_access,foot_average_speed,foot_priority"
     private const val MILLIS_TO_SECONDS = 1000.0
 
@@ -46,11 +46,12 @@ object GraphHopperManager {
     private var graphConfig: GraphHopperConfig? = null
 
     fun init(path: String, useMmapStore: Boolean = DEFAULT_USE_MMAP_STORE) {
+        if (_isReady.value) {
+            return
+        }
         val cacheDir = File(path, GRAPH_CACHE_DIR)
         if (cacheDir.exists()) {
             loadGraph(cacheDir, useMmapStore)
-        } else {
-            _isReady.value = false
         }
     }
 

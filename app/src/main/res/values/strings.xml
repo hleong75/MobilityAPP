@@ -2,5 +2,9 @@
     <string name="app_name">MobilityAPP</string>
     <string name="offline_map_placeholder">Aucune carte locale détectée, veuillez télécharger une zone</string>
     <string name="location_permission_required">Autorisez la localisation pour activer les fonctionnalités de trajet.</string>
-    <string name="graphhopper_loading_message">Construction du réseau de transport en cours... Cela ne se produit qu'une fois</string>
+    <string name="graphhopper_loading_message">Construction du réseau de transport en cours... Cela se produit généralement une seule fois</string>
+    <string name="graphhopper_notification_title">Initialisation du réseau</string>
+    <string name="graphhopper_notification_text">Construction du réseau de transport en cours...</string>
+    <string name="graphhopper_notification_channel_name">Import GraphHopper</string>
+    <string name="graphhopper_notification_channel_description">Import des données de transport</string>
 </resources>

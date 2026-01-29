@@ -8,7 +8,6 @@ import androidx.work.workDataOf
 import java.io.File
 
 object GraphHopperInitializer {
-    private const val GRAPH_CACHE_DIR = "graph-cache"
     private const val WORK_NAME = "graphhopper_import"
     private const val DEFAULT_OSM_FILE = "data.osm.pbf"
     private const val DEFAULT_GTFS_FILE = "data.gtfs.zip"
@@ -16,8 +15,7 @@ object GraphHopperInitializer {
     fun start(context: Context) {
         val graphRoot = context.filesDir
         GraphHopperManager.init(graphRoot.absolutePath)
-        if (GraphHopperManager.isReady.value) return
-        val graphCacheDir = File(graphRoot, GRAPH_CACHE_DIR)
+        val graphCacheDir = File(graphRoot, GraphHopperManager.GRAPH_CACHE_DIR)
         if (graphCacheDir.exists()) {
             return
         }
