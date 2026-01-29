@@ -74,13 +74,14 @@ object GraphHopperManager {
     ): Itinerary? {
         val hopperInstance = hopper ?: return null
         val response = if (mode == TravelMode.PT) {
+            val routerFactory = ptRouterFactory ?: return null
             val request = Request(listOf(
                 GHPointLocation(GHPoint(startLat, startLon)),
                 GHPointLocation(GHPoint(endLat, endLon))
             ), time.toInstant())
             request.setAccessProfile(PROFILE_FOOT)
             request.setEgressProfile(PROFILE_FOOT)
-            ptRouterFactory?.createWithoutRealtimeFeed()?.route(request)
+            routerFactory.createWithoutRealtimeFeed().route(request)
         } else {
             val request = GHRequest(startLat, startLon, endLat, endLon)
                 .setProfile(PROFILE_FOOT)
@@ -105,11 +106,10 @@ object GraphHopperManager {
         if (response == null || response.hasErrors()) return null
         val path = response.best ?: return null
         val (instructions, distanceMeters, durationMillis) = if (mode == TravelMode.PT) {
-            val walkPath = path.legs
+            val walkInstructions = path.legs
                 .filterIsInstance<Trip.WalkLeg>()
-                .firstOrNull()
-                ?.instructions
-            Triple(walkPath?.toDomainInstructions().orEmpty(), path.distance, path.time)
+                .flatMap { leg -> leg.instructions?.toDomainInstructions().orEmpty() }
+            Triple(walkInstructions, path.distance, path.time)
         } else {
             Triple(path.instructions.toDomainInstructions(), path.distance, path.time)
         }
@@ -142,7 +142,7 @@ object GraphHopperManager {
     private fun com.graphhopper.util.InstructionList.toDomainInstructions(): List<Instruction> {
         return map { instruction ->
             Instruction(
-                text = instruction.turnDescription(tr),
+                text = instruction.turnDescription(getTr()),
                 distanceMeters = instruction.distance,
                 durationSeconds = (instruction.time / MILLIS_TO_SECONDS).toLong()
             )
