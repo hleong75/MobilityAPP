@@ -60,6 +60,8 @@ dependencies {
     implementation("com.graphhopper:graphhopper-reader-gtfs:9.1")
     implementation("org.maplibre.gl:android-sdk:11.2.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
+    implementation("androidx.work:work-runtime-ktx:2.9.0")
+    implementation("androidx.lifecycle:lifecycle-service:2.8.5")
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
 
     debugImplementation("androidx.compose.ui:ui-tooling")

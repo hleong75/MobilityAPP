@@ -3,9 +3,13 @@ package com.example.mobilityapp.presentation.map
 import android.content.Context
 import android.net.Uri
 import android.os.Environment
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -18,9 +22,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.mobilityapp.R
+import com.example.mobilityapp.data.GraphHopperManager
 import com.example.mobilityapp.domain.model.RouteCoordinate
 import org.maplibre.android.MapLibre
 import org.maplibre.android.camera.CameraUpdateFactory
@@ -55,10 +61,30 @@ private const val ROUTE_BOUNDS_PADDING_DP = 50f
 fun OfflineMapScreen(mapViewModel: MapViewModel = viewModel()) {
     val context = LocalContext.current
     val mbtilesFile = remember(context) { resolveMbtiles(context) }
-    if (mbtilesFile == null) {
+    val isGraphReady by GraphHopperManager.isReady.collectAsState()
+    if (!isGraphReady) {
+        LoadingScreen()
+    } else if (mbtilesFile == null) {
         PlaceholderMap()
     } else {
         OfflineMapView(mbtilesFile, mapViewModel)
+    }
+}
+
+@Composable
+private fun LoadingScreen() {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            LinearProgressIndicator()
+            Text(
+                modifier = Modifier.padding(top = 16.dp),
+                text = stringResource(R.string.graphhopper_loading_message),
+                style = MaterialTheme.typography.bodyLarge
+            )
+        }
     }
 }
 
