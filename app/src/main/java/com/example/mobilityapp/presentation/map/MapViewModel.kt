@@ -1,11 +1,16 @@
 package com.example.mobilityapp.presentation.map
 
+import android.content.Context
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.mobilityapp.data.GraphHopperInitializer
+import com.example.mobilityapp.data.GraphHopperManager
 import com.example.mobilityapp.data.RoutingRepository
 import com.example.mobilityapp.domain.model.Itinerary
 import com.example.mobilityapp.domain.model.RouteCoordinate
 import com.example.mobilityapp.domain.model.TravelMode
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -20,6 +25,24 @@ class MapViewModel(
 
     private val _routeCoordinates = MutableStateFlow<List<RouteCoordinate>>(emptyList())
     val routeCoordinates: StateFlow<List<RouteCoordinate>> = _routeCoordinates.asStateFlow()
+
+    private val _graphError = MutableStateFlow<String?>(null)
+    val graphError: StateFlow<String?> = _graphError.asStateFlow()
+
+    fun initializeGraph(context: Context) {
+        if (GraphHopperManager.isReady.value) {
+            return
+        }
+        _graphError.value = null
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                GraphHopperInitializer.start(context)
+            } catch (e: Exception) {
+                Log.e("GH_DEBUG", "CRASH", e)
+                _graphError.value = e.message?.let { "Erreur: $it" } ?: "Erreur: Import GraphHopper"
+            }
+        }
+    }
 
     fun requestRoute(
         startLat: Double,

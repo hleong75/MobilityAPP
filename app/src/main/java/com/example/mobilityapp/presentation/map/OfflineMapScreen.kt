@@ -63,8 +63,12 @@ fun OfflineMapScreen(mapViewModel: MapViewModel = viewModel()) {
     val context = LocalContext.current
     val mbtilesFile = remember(context) { resolveMbtiles(context) }
     val isGraphReady by GraphHopperManager.isReady.collectAsState()
+    val graphError by mapViewModel.graphError.collectAsState()
+    LaunchedEffect(Unit) {
+        mapViewModel.initializeGraph(context.applicationContext)
+    }
     if (!isGraphReady) {
-        LoadingScreen()
+        LoadingScreen(graphError)
     } else if (mbtilesFile == null) {
         PlaceholderMap()
     } else {
@@ -73,16 +77,18 @@ fun OfflineMapScreen(mapViewModel: MapViewModel = viewModel()) {
 }
 
 @Composable
-private fun LoadingScreen() {
+private fun LoadingScreen(errorMessage: String?) {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            LinearProgressIndicator()
+            if (errorMessage == null) {
+                LinearProgressIndicator()
+            }
             Text(
                 modifier = Modifier.padding(top = 16.dp),
-                text = stringResource(R.string.graphhopper_loading_message),
+                text = errorMessage ?: stringResource(R.string.graphhopper_loading_message),
                 style = MaterialTheme.typography.bodyLarge
             )
         }

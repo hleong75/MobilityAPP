@@ -13,7 +13,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
-import com.example.mobilityapp.data.GraphHopperInitializer
 import com.example.mobilityapp.presentation.map.OfflineMapScreen
 
 class MainActivity : ComponentActivity() {
@@ -27,7 +26,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        GraphHopperInitializer.start(applicationContext)
         if (ContextCompat.checkSelfPermission(
                 this,
                 Manifest.permission.ACCESS_FINE_LOCATION

@@ -5,6 +5,7 @@ import com.example.mobilityapp.domain.model.Itinerary
 import com.example.mobilityapp.domain.model.Leg
 import com.example.mobilityapp.domain.model.RouteCoordinate
 import com.example.mobilityapp.domain.model.TravelMode
+import android.util.Log
 import com.graphhopper.GHRequest
 import com.graphhopper.GHResponse
 import com.graphhopper.GraphHopperConfig
@@ -27,6 +28,7 @@ import java.io.File
 import java.util.Date
 
 object GraphHopperManager {
+    private const val LOG_TAG = "GH_DEBUG"
     private const val DEFAULT_USE_MMAP_STORE = true
     private const val PROFILE_FOOT = "foot"
     internal const val GRAPH_CACHE_DIR = "graph-cache"
@@ -45,7 +47,7 @@ object GraphHopperManager {
     @Volatile
     private var graphConfig: GraphHopperConfig? = null
 
-    fun init(path: String, useMmapStore: Boolean = DEFAULT_USE_MMAP_STORE) {
+    suspend fun init(path: String, useMmapStore: Boolean = DEFAULT_USE_MMAP_STORE) {
         if (_isReady.value) {
             return
         }
@@ -62,24 +64,33 @@ object GraphHopperManager {
         useMmapStore: Boolean = DEFAULT_USE_MMAP_STORE
     ) {
         withContext(Dispatchers.IO) {
-            val graphCacheDir = File(graphRoot, GRAPH_CACHE_DIR)
-            val config = GraphHopperConfig().apply {
-                putObject("graph.location", graphCacheDir.absolutePath)
-                putObject("datareader.file", osmFile.absolutePath)
-                putObject("gtfs.file", gtfsFile.absolutePath)
-                putObject("graph.dataaccess", dataAccessType(useMmapStore))
-                applyProfiles(this)
-            }
+            try {
+                Log.e(LOG_TAG, "Vérification des fichiers...")
+                Log.e(LOG_TAG, "Fichier OSM trouvé : ${osmFile.exists()}")
+                Log.e(LOG_TAG, "Démarrage import GraphHopper...")
+                val graphCacheDir = File(graphRoot, GRAPH_CACHE_DIR)
+                val config = GraphHopperConfig().apply {
+                    putObject("graph.location", graphCacheDir.absolutePath)
+                    putObject("datareader.file", osmFile.absolutePath)
+                    putObject("gtfs.file", gtfsFile.absolutePath)
+                    putObject("graph.dataaccess", dataAccessType(useMmapStore))
+                    applyProfiles(this)
+                }
 
-            val gtfsHopper = GraphHopperGtfs(config)
-            gtfsHopper.init(config)
-            gtfsHopper.importOrLoad()
-            val router = buildPtRouter(config, gtfsHopper)
-            synchronized(this@GraphHopperManager) {
-                hopper = gtfsHopper
-                graphConfig = config
-                ptRouter = router
-                _isReady.value = true
+                val gtfsHopper = GraphHopperGtfs(config)
+                gtfsHopper.init(config)
+                gtfsHopper.importOrLoad()
+                val router = buildPtRouter(config, gtfsHopper)
+                synchronized(this@GraphHopperManager) {
+                    hopper = gtfsHopper
+                    graphConfig = config
+                    ptRouter = router
+                    _isReady.value = true
+                }
+                Log.e(LOG_TAG, "Import terminé !")
+            } catch (e: Exception) {
+                Log.e(LOG_TAG, "CRASH", e)
+                throw e
             }
         }
     }
@@ -113,21 +124,32 @@ object GraphHopperManager {
         return mapResponse(response, mode)
     }
 
-    private fun loadGraph(cacheDir: File, useMmapStore: Boolean) {
-        val config = GraphHopperConfig().apply {
-            putObject("graph.location", cacheDir.absolutePath)
-            putObject("graph.dataaccess", dataAccessType(useMmapStore))
-            applyProfiles(this)
-        }
-        val graph = GraphHopperGtfs(config)
-        graph.init(config)
-        graph.load()
-        val router = buildPtRouter(config, graph)
-        synchronized(this@GraphHopperManager) {
-            hopper = graph
-            graphConfig = config
-            ptRouter = router
-            _isReady.value = true
+    private suspend fun loadGraph(cacheDir: File, useMmapStore: Boolean) {
+        withContext(Dispatchers.IO) {
+            try {
+                Log.e(LOG_TAG, "Vérification des fichiers...")
+                Log.e(LOG_TAG, "Fichier OSM trouvé : ${cacheDir.exists()}")
+                Log.e(LOG_TAG, "Démarrage import GraphHopper...")
+                val config = GraphHopperConfig().apply {
+                    putObject("graph.location", cacheDir.absolutePath)
+                    putObject("graph.dataaccess", dataAccessType(useMmapStore))
+                    applyProfiles(this)
+                }
+                val graph = GraphHopperGtfs(config)
+                graph.init(config)
+                graph.load()
+                val router = buildPtRouter(config, graph)
+                synchronized(this@GraphHopperManager) {
+                    hopper = graph
+                    graphConfig = config
+                    ptRouter = router
+                    _isReady.value = true
+                }
+                Log.e(LOG_TAG, "Import terminé !")
+            } catch (e: Exception) {
+                Log.e(LOG_TAG, "CRASH", e)
+                throw e
+            }
         }
     }
 
