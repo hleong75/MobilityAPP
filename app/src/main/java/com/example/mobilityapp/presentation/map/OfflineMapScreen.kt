@@ -10,6 +10,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -18,13 +19,25 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.mobilityapp.R
+import com.example.mobilityapp.domain.model.RouteCoordinate
 import org.maplibre.android.MapLibre
+import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
+import org.maplibre.android.style.layers.LineLayer
 import org.maplibre.android.style.layers.RasterLayer
+import org.maplibre.android.style.layers.PropertyFactory
+import org.maplibre.android.style.layers.PropertyFactory.lineCap
+import org.maplibre.android.style.layers.PropertyFactory.lineColor
+import org.maplibre.android.style.layers.PropertyFactory.lineJoin
+import org.maplibre.android.style.layers.PropertyFactory.lineWidth
 import org.maplibre.android.style.sources.RasterSource
 import org.maplibre.android.style.sources.TileSet
+import org.maplibre.android.style.sources.GeoJsonSource
+import org.maplibre.android.geometry.LatLng
+import org.maplibre.android.geometry.LatLngBounds
 import java.io.File
 
 private const val MBTILES_FILE_NAME = "city_map.mbtiles"
@@ -32,15 +45,19 @@ private const val TILEJSON_VERSION = "2.2.0"
 private const val TILE_SIZE_PX = 256
 private const val OFFLINE_SOURCE_ID = "offline-raster"
 private const val OFFLINE_LAYER_ID = "offline-layer"
+private const val ROUTE_SOURCE_ID = "route-source"
+private const val ROUTE_LAYER_BORDER_ID = "route-line-border"
+private const val ROUTE_LAYER_ID = "route-line"
+private const val EMPTY_ROUTE_GEOJSON = "{\"type\":\"FeatureCollection\",\"features\":[]}"
 
 @Composable
-fun OfflineMapScreen() {
+fun OfflineMapScreen(mapViewModel: MapViewModel = viewModel()) {
     val context = LocalContext.current
     val mbtilesFile = remember(context) { resolveMbtiles(context) }
     if (mbtilesFile == null) {
         PlaceholderMap()
     } else {
-        OfflineMapView(mbtilesFile)
+        OfflineMapView(mbtilesFile, mapViewModel)
     }
 }
 
@@ -55,9 +72,11 @@ private fun PlaceholderMap() {
 }
 
 @Composable
-private fun OfflineMapView(mbtilesFile: File) {
+private fun OfflineMapView(mbtilesFile: File, mapViewModel: MapViewModel) {
     val mapView = rememberMapViewWithLifecycle()
     val currentFile by rememberUpdatedState(mbtilesFile)
+    val routeGeoJson by mapViewModel.routeGeoJson.collectAsState()
+    val routeCoordinates by mapViewModel.routeCoordinates.collectAsState()
     LaunchedEffect(mapView, currentFile) {
         val fileUri = Uri.fromFile(currentFile)
         val tileSet = TileSet(TILEJSON_VERSION, fileUri.toString())
@@ -68,8 +87,40 @@ private fun OfflineMapView(mbtilesFile: File) {
                 Style.Builder().apply {
                     withSource(rasterSource)
                     withLayer(rasterLayer)
+                    withSource(GeoJsonSource(ROUTE_SOURCE_ID))
+                    withLayerAbove(
+                        LineLayer(ROUTE_LAYER_BORDER_ID, ROUTE_SOURCE_ID).withProperties(
+                            lineColor("#1c3f7a"),
+                            lineWidth(8f),
+                            lineCap(PropertyFactory.LINE_CAP_ROUND),
+                            lineJoin(PropertyFactory.LINE_JOIN_ROUND)
+                        ),
+                        OFFLINE_LAYER_ID
+                    )
+                    withLayerAbove(
+                        LineLayer(ROUTE_LAYER_ID, ROUTE_SOURCE_ID).withProperties(
+                            lineColor("#2b74ff"),
+                            lineWidth(5f),
+                            lineCap(PropertyFactory.LINE_CAP_ROUND),
+                            lineJoin(PropertyFactory.LINE_JOIN_ROUND)
+                        ),
+                        ROUTE_LAYER_BORDER_ID
+                    )
                 }
             )
+        }
+    }
+    LaunchedEffect(mapView, routeGeoJson) {
+        mapView.getMapAsync { mapboxMap ->
+            val geoJson = routeGeoJson ?: EMPTY_ROUTE_GEOJSON
+            mapboxMap.getStyle { style ->
+                style.getSourceAs<GeoJsonSource>(ROUTE_SOURCE_ID)?.setGeoJson(geoJson)
+            }
+        }
+    }
+    LaunchedEffect(mapView, routeCoordinates) {
+        if (routeCoordinates.isNotEmpty()) {
+            zoomToRoute(mapView, routeCoordinates)
         }
     }
     AndroidView(
@@ -106,4 +157,34 @@ private fun rememberMapViewWithLifecycle(): MapView {
         }
     }
     return mapView
+}
+
+private fun zoomToRoute(mapView: MapView, coordinates: List<RouteCoordinate>) {
+    val bounds = buildBounds(coordinates) ?: return
+    val paddingPx = mapView.resources.displayMetrics.density * 50f
+    mapView.getMapAsync { mapboxMap ->
+        mapboxMap.animateCamera(
+            CameraUpdateFactory.newLatLngBounds(
+                bounds,
+                paddingPx.toInt()
+            )
+        )
+    }
+}
+
+private fun buildBounds(coordinates: List<RouteCoordinate>): LatLngBounds? {
+    if (coordinates.isEmpty()) return null
+    var minLat = Double.MAX_VALUE
+    var minLon = Double.MAX_VALUE
+    var maxLat = -Double.MAX_VALUE
+    var maxLon = -Double.MAX_VALUE
+    coordinates.forEach { coordinate ->
+        minLat = minOf(minLat, coordinate.latitude)
+        maxLat = maxOf(maxLat, coordinate.latitude)
+        minLon = minOf(minLon, coordinate.longitude)
+        maxLon = maxOf(maxLon, coordinate.longitude)
+    }
+    val southwest = LatLng(minLat, minLon)
+    val northeast = LatLng(maxLat, maxLon)
+    return LatLngBounds.fromLatLngs(listOf(southwest, northeast))
 }
