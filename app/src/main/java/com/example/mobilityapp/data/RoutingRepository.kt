@@ -2,10 +2,12 @@ package com.example.mobilityapp.data
 
 import com.example.mobilityapp.domain.model.Itinerary
 import com.example.mobilityapp.domain.model.TravelMode
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.util.Date
 
 class RoutingRepository {
-    fun calculateRoute(
+    suspend fun calculateRoute(
         startLat: Double,
         startLon: Double,
         endLat: Double,
@@ -13,6 +15,8 @@ class RoutingRepository {
         time: Date,
         mode: TravelMode
     ): Itinerary? {
-        return GraphHopperManager.route(startLat, startLon, endLat, endLon, time, mode)
+        return withContext(Dispatchers.IO) {
+            GraphHopperManager.route(startLat, startLon, endLat, endLon, time, mode)
+        }
     }
 }

@@ -30,7 +30,9 @@ class MapViewModel(
         mode: TravelMode = TravelMode.FOOT
     ) {
         viewModelScope.launch {
-            val itinerary = routingRepository.calculateRoute(startLat, startLon, endLat, endLon, time, mode)
+            val itinerary = kotlin.runCatching {
+                routingRepository.calculateRoute(startLat, startLon, endLat, endLon, time, mode)
+            }.getOrNull()
             updateRoute(itinerary)
         }
     }

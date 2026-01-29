@@ -49,6 +49,7 @@ private const val ROUTE_SOURCE_ID = "route-source"
 private const val ROUTE_LAYER_BORDER_ID = "route-line-border"
 private const val ROUTE_LAYER_ID = "route-line"
 private const val EMPTY_ROUTE_GEOJSON = "{\"type\":\"FeatureCollection\",\"features\":[]}"
+private const val ROUTE_BOUNDS_PADDING_DP = 50f
 
 @Composable
 fun OfflineMapScreen(mapViewModel: MapViewModel = viewModel()) {
@@ -87,7 +88,7 @@ private fun OfflineMapView(mbtilesFile: File, mapViewModel: MapViewModel) {
                 Style.Builder().apply {
                     withSource(rasterSource)
                     withLayer(rasterLayer)
-                    withSource(GeoJsonSource(ROUTE_SOURCE_ID))
+                    withSource(GeoJsonSource(ROUTE_SOURCE_ID, EMPTY_ROUTE_GEOJSON))
                     withLayerAbove(
                         LineLayer(ROUTE_LAYER_BORDER_ID, ROUTE_SOURCE_ID).withProperties(
                             lineColor("#1c3f7a"),
@@ -110,17 +111,15 @@ private fun OfflineMapView(mbtilesFile: File, mapViewModel: MapViewModel) {
             )
         }
     }
-    LaunchedEffect(mapView, routeGeoJson) {
+    LaunchedEffect(mapView, routeGeoJson, routeCoordinates) {
         mapView.getMapAsync { mapboxMap ->
             val geoJson = routeGeoJson ?: EMPTY_ROUTE_GEOJSON
             mapboxMap.getStyle { style ->
                 style.getSourceAs<GeoJsonSource>(ROUTE_SOURCE_ID)?.setGeoJson(geoJson)
             }
-        }
-    }
-    LaunchedEffect(mapView, routeCoordinates) {
-        if (routeCoordinates.isNotEmpty()) {
-            zoomToRoute(mapView, routeCoordinates)
+            if (routeCoordinates.isNotEmpty()) {
+                zoomToRoute(mapView, routeCoordinates)
+            }
         }
     }
     AndroidView(
@@ -161,7 +160,7 @@ private fun rememberMapViewWithLifecycle(): MapView {
 
 private fun zoomToRoute(mapView: MapView, coordinates: List<RouteCoordinate>) {
     val bounds = buildBounds(coordinates) ?: return
-    val paddingPx = mapView.resources.displayMetrics.density * 50f
+    val paddingPx = mapView.resources.displayMetrics.density * ROUTE_BOUNDS_PADDING_DP
     mapView.getMapAsync { mapboxMap ->
         mapboxMap.animateCamera(
             CameraUpdateFactory.newLatLngBounds(
@@ -173,7 +172,7 @@ private fun zoomToRoute(mapView: MapView, coordinates: List<RouteCoordinate>) {
 }
 
 private fun buildBounds(coordinates: List<RouteCoordinate>): LatLngBounds? {
-    if (coordinates.isEmpty()) return null
+    if (coordinates.isEmpty() || coordinates.size < 2) return null
     var minLat = Double.MAX_VALUE
     var minLon = Double.MAX_VALUE
     var maxLat = -Double.MAX_VALUE
@@ -186,5 +185,8 @@ private fun buildBounds(coordinates: List<RouteCoordinate>): LatLngBounds? {
     }
     val southwest = LatLng(minLat, minLon)
     val northeast = LatLng(maxLat, maxLon)
-    return LatLngBounds.fromLatLngs(listOf(southwest, northeast))
+    return LatLngBounds.Builder()
+        .include(southwest)
+        .include(northeast)
+        .build()
 }
