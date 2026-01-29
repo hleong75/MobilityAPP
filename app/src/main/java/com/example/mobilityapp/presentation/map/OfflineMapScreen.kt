@@ -64,7 +64,7 @@ fun OfflineMapScreen(mapViewModel: MapViewModel = viewModel()) {
     val mbtilesFile = remember(context) { resolveMbtiles(context) }
     val isGraphReady by GraphHopperManager.isReady.collectAsState()
     val graphError by mapViewModel.graphError.collectAsState()
-    LaunchedEffect(context) {
+    LaunchedEffect(Unit) {
         mapViewModel.initializeGraph(context.applicationContext)
     }
     if (!isGraphReady) {

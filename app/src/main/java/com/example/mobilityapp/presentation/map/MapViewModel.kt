@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.mobilityapp.data.GraphHopperInitializer
+import com.example.mobilityapp.data.GraphHopperManager
 import com.example.mobilityapp.data.RoutingRepository
 import com.example.mobilityapp.domain.model.Itinerary
 import com.example.mobilityapp.domain.model.RouteCoordinate
@@ -29,6 +30,9 @@ class MapViewModel(
     val graphError: StateFlow<String?> = _graphError.asStateFlow()
 
     fun initializeGraph(context: Context) {
+        if (GraphHopperManager.isReady.value) {
+            return
+        }
         _graphError.value = null
         viewModelScope.launch(Dispatchers.IO) {
             try {

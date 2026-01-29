@@ -22,10 +22,14 @@ object GraphHopperInitializer {
             val osmFile = File(dataDir, DEFAULT_OSM_FILE)
             val gtfsFile = File(dataDir, DEFAULT_GTFS_FILE)
             if (!osmFile.exists() || !gtfsFile.exists()) {
+                val errorMessage = when {
+                    !osmFile.exists() && !gtfsFile.exists() -> "Fichier OSM et GTFS manquants"
+                    !osmFile.exists() -> "Fichier OSM manquant"
+                    else -> "Fichier GTFS manquant"
+                }
                 Log.e("GH_DEBUG", "Vérification des fichiers...")
                 Log.e("GH_DEBUG", "Fichier OSM trouvé : ${osmFile.exists()}")
-                Log.e("GH_DEBUG", "CRASH", IllegalStateException("Fichier manquant"))
-                throw IllegalStateException("Fichier manquant")
+                throw IllegalStateException(errorMessage)
             }
             GraphHopperManager.importData(
                 osmFile = osmFile,
