@@ -38,7 +38,7 @@ class GraphHopperImportWorker(
         val notification = NotificationCompat.Builder(appContext, NOTIFICATION_CHANNEL_ID)
             .setContentTitle(NOTIFICATION_TITLE)
             .setContentText(NOTIFICATION_TEXT)
-            .setSmallIcon(android.R.drawable.stat_sys_download)
+            .setSmallIcon(android.R.drawable.stat_notify_sync)
             .setOngoing(true)
             .build()
         return ForegroundInfo(NOTIFICATION_ID, notification, Notification.FOREGROUND_SERVICE_DATA_SYNC)
