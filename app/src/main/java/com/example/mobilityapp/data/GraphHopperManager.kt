@@ -9,11 +9,14 @@ import com.graphhopper.GHResponse
 import com.graphhopper.GraphHopperConfig
 import com.graphhopper.config.Profile
 import com.graphhopper.gtfs.GHPointLocation
+import com.graphhopper.gtfs.GraphHopperGtfs
+import com.graphhopper.gtfs.PtRouter
+import com.graphhopper.gtfs.PtRouterImpl
 import com.graphhopper.gtfs.Request
 import com.graphhopper.json.Statement
 import com.graphhopper.util.CustomModel
+import com.graphhopper.util.TranslationMap
 import com.graphhopper.util.shapes.GHPoint
-import com.graphhopper.gtfs.GraphHopperGtfs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -24,11 +27,17 @@ object GraphHopperManager {
     private const val DEFAULT_USE_MMAP_STORE = true
     private const val PROFILE_FOOT = "foot"
     private const val GRAPH_CACHE_DIR = "graph-cache"
-    private const val ENCODERS = "foot"
     private const val ENCODED_VALUES = "foot_access,foot_average_speed,foot_priority"
     private const val MILLIS_TO_SECONDS = 1000.0
 
+    @Volatile
     private var hopper: GraphHopperGtfs? = null
+
+    @Volatile
+    private var ptRouter: PtRouter? = null
+
+    @Volatile
+    private var graphConfig: GraphHopperConfig? = null
 
     fun init(path: String, useMmapStore: Boolean = DEFAULT_USE_MMAP_STORE) {
         val cacheDir = File(path, GRAPH_CACHE_DIR)
@@ -55,8 +64,14 @@ object GraphHopperManager {
             }
 
             val gtfsHopper = GraphHopperGtfs(config)
+            gtfsHopper.init(config)
             gtfsHopper.importOrLoad()
-            hopper = gtfsHopper
+            val router = buildPtRouter(config, gtfsHopper)
+            synchronized(this@GraphHopperManager) {
+                hopper = gtfsHopper
+                graphConfig = config
+                ptRouter = router
+            }
         }
     }
 
@@ -70,13 +85,17 @@ object GraphHopperManager {
     ): Itinerary? {
         val hopperInstance = hopper ?: return null
         val response = if (mode == TravelMode.PT) {
+            val config = graphConfig ?: return null
+            val router = ptRouter ?: synchronized(this@GraphHopperManager) {
+                ptRouter ?: buildPtRouter(config, hopperInstance).also { ptRouter = it }
+            }
             val request = Request(listOf(
                 GHPointLocation(GHPoint(startLat, startLon)),
                 GHPointLocation(GHPoint(endLat, endLon))
             ), time.toInstant())
             request.setAccessProfile(PROFILE_FOOT)
             request.setEgressProfile(PROFILE_FOOT)
-            hopperInstance.route(request)
+            router.route(request)
         } else {
             val request = GHRequest(startLat, startLon, endLat, endLon)
                 .setProfile(PROFILE_FOOT)
@@ -86,13 +105,20 @@ object GraphHopperManager {
     }
 
     private fun loadGraph(cacheDir: File, useMmapStore: Boolean) {
-        val graph = GraphHopperGtfs(GraphHopperConfig().apply {
+        val config = GraphHopperConfig().apply {
             putObject("graph.location", cacheDir.absolutePath)
             putObject("graph.dataaccess", dataAccessType(useMmapStore))
             applyProfiles(this)
-        })
-        graph.load(cacheDir.absolutePath)
-        hopper = graph
+        }
+        val graph = GraphHopperGtfs(config)
+        graph.init(config)
+        graph.load()
+        val router = buildPtRouter(config, graph)
+        synchronized(this@GraphHopperManager) {
+            hopper = graph
+            graphConfig = config
+            ptRouter = router
+        }
     }
 
     private fun mapResponse(response: GHResponse, mode: TravelMode): Itinerary? {
@@ -100,7 +126,7 @@ object GraphHopperManager {
         val path = response.best ?: return null
         val instructions = path.instructions.map {
             Instruction(
-                text = it.text,
+                text = it.name,
                 distanceMeters = it.distance,
                 durationSeconds = (it.time / MILLIS_TO_SECONDS).toLong()
             )
@@ -121,7 +147,7 @@ object GraphHopperManager {
     }
 
     private fun applyProfiles(config: GraphHopperConfig) {
-        config.putObject("graph.flag_encoders", ENCODERS)
+        config.putObject("import.osm.ignored_highways", "")
         config.putObject("graph.encoded_values", ENCODED_VALUES)
         config.setProfiles(
             listOf(
@@ -134,6 +160,17 @@ object GraphHopperManager {
                     )
             )
         )
+    }
+
+    private fun buildPtRouter(config: GraphHopperConfig, hopperInstance: GraphHopperGtfs): PtRouter {
+        return PtRouterImpl.Factory(
+            config,
+            TranslationMap().doImport(),
+            hopperInstance.baseGraph,
+            hopperInstance.encodingManager,
+            hopperInstance.locationIndex,
+            hopperInstance.gtfsStorage
+        ).createWithoutRealtimeFeed()
     }
 
     private fun dataAccessType(useMmapStore: Boolean): String {

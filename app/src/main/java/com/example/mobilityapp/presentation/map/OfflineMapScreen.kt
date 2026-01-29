@@ -59,16 +59,16 @@ private fun OfflineMapView(mbtilesFile: File) {
     val mapView = rememberMapViewWithLifecycle()
     val currentFile by rememberUpdatedState(mbtilesFile)
     LaunchedEffect(mapView, currentFile) {
-        val fileUri = Uri.fromFile(currentFile).toString()
-        val tileSet = TileSet(TILEJSON_VERSION, fileUri)
+        val fileUri = Uri.fromFile(currentFile)
+        val tileSet = TileSet(TILEJSON_VERSION, fileUri.toString())
         val rasterSource = RasterSource(OFFLINE_SOURCE_ID, tileSet, TILE_SIZE_PX)
         val rasterLayer = RasterLayer(OFFLINE_LAYER_ID, OFFLINE_SOURCE_ID)
         mapView.getMapAsync { mapboxMap ->
             mapboxMap.setStyle(
-                Style.Builder()
-                    .withSource(rasterSource)
-                    .withLayer(rasterLayer)
-                    .build()
+                Style.Builder().apply {
+                    withSource(rasterSource)
+                    withLayer(rasterLayer)
+                }
             )
         }
     }
