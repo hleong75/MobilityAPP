@@ -29,6 +29,9 @@ class MapViewModel(
     private val _graphError = MutableStateFlow<String?>(null)
     val graphError: StateFlow<String?> = _graphError.asStateFlow()
 
+    private val _forceUpdateInProgress = MutableStateFlow(false)
+    val forceUpdateInProgress: StateFlow<Boolean> = _forceUpdateInProgress.asStateFlow()
+
     fun initializeGraph(context: Context) {
         if (GraphHopperManager.isReady.value) {
             return
@@ -40,6 +43,21 @@ class MapViewModel(
             } catch (e: Exception) {
                 Log.e("GH_DEBUG", "CRASH", e)
                 _graphError.value = e.message?.let { "Erreur: $it" } ?: "Erreur: Import GraphHopper"
+            }
+        }
+    }
+
+    fun forceUpdateGraph(context: Context) {
+        _graphError.value = null
+        _forceUpdateInProgress.value = true
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                GraphHopperInitializer.forceRebuild(context)
+            } catch (e: Exception) {
+                Log.e("GH_DEBUG", "CRASH", e)
+                _graphError.value = e.message?.let { "Erreur: $it" } ?: "Erreur: Import GraphHopper"
+            } finally {
+                _forceUpdateInProgress.value = false
             }
         }
     }

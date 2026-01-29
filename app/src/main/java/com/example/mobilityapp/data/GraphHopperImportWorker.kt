@@ -27,11 +27,20 @@ class GraphHopperImportWorker(
         val graphRootPath = inputData.getString(KEY_GRAPH_ROOT_PATH) ?: return Result.failure()
         return kotlin.runCatching {
             setForeground(createForegroundInfo())
+            val graphRoot = File(graphRootPath)
+            val osmFile = File(osmPath)
+            val gtfsFile = File(gtfsPath)
             GraphHopperManager.importData(
-                osmFile = File(osmPath),
-                gtfsFile = File(gtfsPath),
-                graphRoot = File(graphRootPath)
+                osmFile = osmFile,
+                gtfsFile = gtfsFile,
+                graphRoot = graphRoot
             )
+            val metadata = GraphMetadataStore.fromFiles(osmFile, gtfsFile)
+            GraphMetadataStore.write(
+                File(graphRoot, GraphMetadataStore.VERSION_FILE_NAME),
+                metadata
+            )
+            GraphHopperManager.init(graphRoot.absolutePath)
         }.fold(
             onSuccess = { Result.success() },
             onFailure = { throwable ->
