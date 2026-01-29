@@ -3,6 +3,7 @@ package com.example.mobilityapp.data
 import com.example.mobilityapp.domain.model.Instruction
 import com.example.mobilityapp.domain.model.Itinerary
 import com.example.mobilityapp.domain.model.Leg
+import com.example.mobilityapp.domain.model.RouteCoordinate
 import com.example.mobilityapp.domain.model.TravelMode
 import com.graphhopper.GHRequest
 import com.graphhopper.GHResponse
@@ -137,12 +138,20 @@ object GraphHopperManager {
             distanceMeters = path.distance,
             durationSeconds = (path.time / MILLIS_TO_SECONDS).toLong()
         )
+        val pointList = path.points
+        val coordinates = (0 until pointList.size()).map { index ->
+            RouteCoordinate(
+                latitude = pointList.getLat(index),
+                longitude = pointList.getLon(index)
+            )
+        }
         return Itinerary(
             legs = listOf(leg),
             startTime = null,
             endTime = null,
             distanceMeters = path.distance,
-            durationSeconds = (path.time / MILLIS_TO_SECONDS).toLong()
+            durationSeconds = (path.time / MILLIS_TO_SECONDS).toLong(),
+            routeCoordinates = coordinates
         )
     }
 

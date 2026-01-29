@@ -7,5 +7,6 @@ data class Itinerary(
     val startTime: Date?,
     val endTime: Date?,
     val distanceMeters: Double,
-    val durationSeconds: Long
+    val durationSeconds: Long,
+    val routeCoordinates: List<RouteCoordinate>
 )
