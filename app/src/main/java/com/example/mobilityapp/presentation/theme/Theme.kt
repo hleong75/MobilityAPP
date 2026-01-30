@@ -10,8 +10,8 @@ private val LightColorScheme = lightColorScheme(
     onPrimary = androidx.compose.ui.graphics.Color.White,
     secondary = DeepMarineBlue,
     onSecondary = androidx.compose.ui.graphics.Color.White,
-    background = SlateGray,
-    onBackground = androidx.compose.ui.graphics.Color.White,
+    background = LightSlateGray,
+    onBackground = androidx.compose.ui.graphics.Color.Black,
     surface = androidx.compose.ui.graphics.Color.White,
     onSurface = androidx.compose.ui.graphics.Color.Black
 )

@@ -4,4 +4,5 @@ import androidx.compose.ui.graphics.Color
 
 val DeepMarineBlue = Color(0xFF0B2E5B)
 val SlateGray = Color(0xFF2E3A43)
+val LightSlateGray = Color(0xFFD8DEE4)
 val SurfaceDark = Color(0xFF1E262D)

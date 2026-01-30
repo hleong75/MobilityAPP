@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.AlertDialog
@@ -226,7 +225,7 @@ private fun MapSearchBottomSheet(
             ) {
                 Icon(
                     painter = painterResource(R.drawable.ic_search),
-                    contentDescription = null,
+                    contentDescription = stringResource(R.string.search_bar_icon_description),
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(20.dp)
                 )
@@ -245,12 +244,6 @@ private fun MapSearchBottomSheet(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                Box(
-                    modifier = Modifier
-                        .width(6.dp)
-                        .heightIn(min = 28.dp)
-                        .padding(start = 4.dp)
-                )
             }
         }
     }
@@ -346,27 +339,18 @@ private fun OfflineMapView(mbtilesFile: File, mapViewModel: MapViewModel) {
                 }
             )
             mapboxMap.getStyle { style ->
-                style.addImage(
-                    TRANSPORT_ICON_BUS,
-                    androidx.core.content.ContextCompat.getDrawable(
-                        mapView.context,
-                        R.drawable.ic_transport_bus
-                    )!!
-                )
-                style.addImage(
-                    TRANSPORT_ICON_TRAM,
-                    androidx.core.content.ContextCompat.getDrawable(
-                        mapView.context,
-                        R.drawable.ic_transport_tram
-                    )!!
-                )
-                style.addImage(
-                    TRANSPORT_ICON_TRAIN,
-                    androidx.core.content.ContextCompat.getDrawable(
-                        mapView.context,
-                        R.drawable.ic_transport_train
-                    )!!
-                )
+                androidx.core.content.ContextCompat.getDrawable(
+                    mapView.context,
+                    R.drawable.ic_transport_bus
+                )?.let { style.addImage(TRANSPORT_ICON_BUS, it) }
+                androidx.core.content.ContextCompat.getDrawable(
+                    mapView.context,
+                    R.drawable.ic_transport_tram
+                )?.let { style.addImage(TRANSPORT_ICON_TRAM, it) }
+                androidx.core.content.ContextCompat.getDrawable(
+                    mapView.context,
+                    R.drawable.ic_transport_train
+                )?.let { style.addImage(TRANSPORT_ICON_TRAIN, it) }
             }
         }
     }

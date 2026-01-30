@@ -17,4 +17,5 @@
     <string name="loading_step_index">Index des données hors ligne</string>
     <string name="loading_step_network">Mise en place du réseau</string>
     <string name="loading_step_finalize">Préparation du trajet</string>
+    <string name="search_bar_icon_description">Recherche</string>
 </resources>
