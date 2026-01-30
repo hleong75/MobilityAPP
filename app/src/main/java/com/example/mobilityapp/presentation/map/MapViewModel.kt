@@ -10,6 +10,7 @@ import com.example.mobilityapp.data.RoutingRepository
 import com.example.mobilityapp.domain.model.Itinerary
 import com.example.mobilityapp.domain.model.RouteCoordinate
 import com.example.mobilityapp.domain.model.TravelMode
+import com.example.mobilityapp.presentation.components.LoadingStep
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -32,18 +33,44 @@ class MapViewModel(
     private val _forceUpdateInProgress = MutableStateFlow(false)
     val forceUpdateInProgress: StateFlow<Boolean> = _forceUpdateInProgress.asStateFlow()
 
+    private val _loadingSteps = MutableStateFlow<List<LoadingStep>>(
+        listOf(
+            LoadingStep("Chargement de la carte", isCompleted = false),
+            LoadingStep("Analyse des données de transport", isCompleted = false),
+            LoadingStep("Construction du réseau", isCompleted = false),
+            LoadingStep("Optimisation des trajets", isCompleted = false)
+        )
+    )
+    val loadingSteps: StateFlow<List<LoadingStep>> = _loadingSteps.asStateFlow()
+
     fun initializeGraph(context: Context) {
         if (GraphHopperManager.isReady.value) {
             return
         }
         _graphError.value = null
+        // Update step 1: Loading map
+        updateLoadingStep(0, true)
         viewModelScope.launch(Dispatchers.IO) {
             try {
+                // Update step 2: Analyzing transport data
+                updateLoadingStep(1, true)
                 GraphHopperInitializer.start(context)
+                // Update step 3: Building network
+                updateLoadingStep(2, true)
+                // Update step 4: Optimizing routes
+                updateLoadingStep(3, true)
             } catch (e: Exception) {
                 Log.e("GH_DEBUG", "CRASH", e)
                 _graphError.value = e.message?.let { "Erreur: $it" } ?: "Erreur: Import GraphHopper"
             }
+        }
+    }
+
+    private fun updateLoadingStep(index: Int, isCompleted: Boolean) {
+        val currentSteps = _loadingSteps.value.toMutableList()
+        if (index in currentSteps.indices) {
+            currentSteps[index] = currentSteps[index].copy(isCompleted = isCompleted)
+            _loadingSteps.value = currentSteps
         }
     }
 

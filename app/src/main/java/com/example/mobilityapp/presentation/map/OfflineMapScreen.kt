@@ -73,13 +73,14 @@ fun OfflineMapScreen(mapViewModel: MapViewModel = viewModel()) {
     val isGraphReady by GraphHopperManager.isReady.collectAsState()
     val graphError by mapViewModel.graphError.collectAsState()
     val forceUpdateInProgress by mapViewModel.forceUpdateInProgress.collectAsState()
+    val loadingSteps by mapViewModel.loadingSteps.collectAsState()
     var showSettings by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         mapViewModel.initializeGraph(context.applicationContext)
     }
     Box(modifier = Modifier.fillMaxSize()) {
         if (!isGraphReady) {
-            LoadingScreen(graphError)
+            LoadingScreen(graphError, loadingSteps)
         } else if (mbtilesFile == null) {
             PlaceholderMap()
         } else {
@@ -113,7 +114,7 @@ fun OfflineMapScreen(mapViewModel: MapViewModel = viewModel()) {
 }
 
 @Composable
-private fun LoadingScreen(errorMessage: String?) {
+private fun LoadingScreen(errorMessage: String?, loadingSteps: List<LoadingStep>) {
     if (errorMessage != null) {
         // Show error in a simple box
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -130,17 +131,8 @@ private fun LoadingScreen(errorMessage: String?) {
             }
         }
     } else {
-        // Show stepped progress
-        val steps = remember {
-            listOf(
-                LoadingStep("Chargement de la carte", isCompleted = true),
-                LoadingStep("Analyse des données de transport", isCompleted = false),
-                LoadingStep("Construction du réseau", isCompleted = false),
-                LoadingStep("Optimisation des trajets", isCompleted = false)
-            )
-        }
-        
-        SteppedProgressScreen(steps = steps)
+        // Show stepped progress with dynamic steps from ViewModel
+        SteppedProgressScreen(steps = loadingSteps)
     }
 }
 
