@@ -14,6 +14,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import com.example.mobilityapp.presentation.map.OfflineMapScreen
+import com.example.mobilityapp.presentation.theme.MobilityAppTheme
 
 class MainActivity : ComponentActivity() {
     private val locationPermissionLauncher = registerForActivityResult(
@@ -52,8 +53,11 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun MobilityApp() {
-    MaterialTheme {
-        Surface(modifier = Modifier.fillMaxSize()) {
+    MobilityAppTheme {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = MaterialTheme.colorScheme.background
+        ) {
             OfflineMapScreen()
         }
     }
