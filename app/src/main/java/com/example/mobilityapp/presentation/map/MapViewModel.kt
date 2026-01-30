@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.mobilityapp.R
 import com.example.mobilityapp.data.GraphHopperInitializer
 import com.example.mobilityapp.data.GraphHopperManager
 import com.example.mobilityapp.data.RoutingRepository
@@ -33,14 +34,7 @@ class MapViewModel(
     private val _forceUpdateInProgress = MutableStateFlow(false)
     val forceUpdateInProgress: StateFlow<Boolean> = _forceUpdateInProgress.asStateFlow()
 
-    private val _loadingSteps = MutableStateFlow<List<LoadingStep>>(
-        listOf(
-            LoadingStep("Chargement de la carte", isCompleted = false),
-            LoadingStep("Analyse des données de transport", isCompleted = false),
-            LoadingStep("Construction du réseau", isCompleted = false),
-            LoadingStep("Optimisation des trajets", isCompleted = false)
-        )
-    )
+    private val _loadingSteps = MutableStateFlow<List<LoadingStep>>(emptyList())
     val loadingSteps: StateFlow<List<LoadingStep>> = _loadingSteps.asStateFlow()
 
     fun initializeGraph(context: Context) {
@@ -48,16 +42,24 @@ class MapViewModel(
             return
         }
         _graphError.value = null
-        // Update step 1: Loading map
-        updateLoadingStep(0, true)
+        
+        // Initialize loading steps with context strings
+        _loadingSteps.value = listOf(
+            LoadingStep(context.getString(R.string.loading_step_map), isCompleted = false),
+            LoadingStep(context.getString(R.string.loading_step_transport), isCompleted = false),
+            LoadingStep(context.getString(R.string.loading_step_network), isCompleted = false),
+            LoadingStep(context.getString(R.string.loading_step_optimize), isCompleted = false)
+        )
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                // Update step 2: Analyzing transport data
-                updateLoadingStep(1, true)
+                // Update step 1: Loading map (initial step)
+                updateLoadingStep(0, true)
+                // Note: The actual GraphHopper initialization steps cannot be tracked
+                // as GraphHopperInitializer.start() is a blocking call without progress callbacks
                 GraphHopperInitializer.start(context)
-                // Update step 3: Building network
+                // Mark all remaining steps as complete after initialization
+                updateLoadingStep(1, true)
                 updateLoadingStep(2, true)
-                // Update step 4: Optimizing routes
                 updateLoadingStep(3, true)
             } catch (e: Exception) {
                 Log.e("GH_DEBUG", "CRASH", e)

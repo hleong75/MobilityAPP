@@ -9,7 +9,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.example.mobilityapp.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -19,9 +21,6 @@ fun PersistentBottomSheet(
     content: @Composable () -> Unit
 ) {
     var searchText by remember { mutableStateOf("") }
-    val sheetState = rememberModalBottomSheetState(
-        skipPartiallyExpanded = false
-    )
     
     Box(modifier = modifier.fillMaxSize()) {
         // Map content
@@ -49,14 +48,14 @@ fun PersistentBottomSheet(
                     .padding(horizontal = 8.dp, vertical = 4.dp),
                 placeholder = { 
                     Text(
-                        "Rechercher une destination...",
+                        stringResource(R.string.search_placeholder),
                         style = MaterialTheme.typography.bodyLarge
                     ) 
                 },
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.Search,
-                        contentDescription = "Rechercher",
+                        contentDescription = stringResource(R.string.search_icon_description),
                         tint = MaterialTheme.colorScheme.primary
                     )
                 },
