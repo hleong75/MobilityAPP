@@ -12,4 +12,9 @@
     <string name="graphhopper_force_update_description">Supprimer le cache GraphHopper et relancer l'importation.</string>
     <string name="settings_title">Paramètres</string>
     <string name="settings_close">Fermer</string>
+    <string name="search_bar_title">Où allez-vous ?</string>
+    <string name="search_bar_subtitle">Recherche d'adresse, arrêt ou lieu</string>
+    <string name="loading_step_index">Index des données hors ligne</string>
+    <string name="loading_step_network">Mise en place du réseau</string>
+    <string name="loading_step_finalize">Préparation du trajet</string>
 </resources>
