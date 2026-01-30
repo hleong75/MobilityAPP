@@ -57,6 +57,16 @@ object GraphHopperManager {
         }
     }
 
+    fun reset() {
+        synchronized(this@GraphHopperManager) {
+            hopper?.close()
+            hopper = null
+            ptRouter = null
+            graphConfig = null
+            _isReady.value = false
+        }
+    }
+
     suspend fun importData(
         osmFile: File,
         gtfsFile: File,
