@@ -34,7 +34,6 @@ class GraphHopperImportWorker(
         val startTime = SystemClock.elapsedRealtime()
         return try {
             setForeground(createForegroundInfo())
-            updateProgress(0)
             updateProgress(10)
             try {
                 GraphHopperManager.importData(
@@ -84,7 +83,7 @@ class GraphHopperImportWorker(
         } catch (e: Exception) {
             Log.e(TAG, "GraphHopper import failed", e)
             cleanPartialGraphCache(graphRoot)
-            Result.failure()
+            return Result.failure()
         } finally {
             val durationMs = SystemClock.elapsedRealtime() - startTime
             Log.i(TAG, "GraphHopper import finished in ${durationMs}ms")
