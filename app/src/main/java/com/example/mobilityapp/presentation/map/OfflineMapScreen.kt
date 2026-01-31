@@ -33,6 +33,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.mobilityapp.R
 import com.example.mobilityapp.data.GraphHopperManager
 import com.example.mobilityapp.domain.model.RouteCoordinate
+import com.example.mobilityapp.presentation.components.LoadingStep
+import com.example.mobilityapp.presentation.components.SteppedProgressScreen
+import com.example.mobilityapp.presentation.components.PersistentBottomSheet
 import org.maplibre.android.MapLibre
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.maps.MapView
@@ -70,17 +73,24 @@ fun OfflineMapScreen(mapViewModel: MapViewModel = viewModel()) {
     val isGraphReady by GraphHopperManager.isReady.collectAsState()
     val graphError by mapViewModel.graphError.collectAsState()
     val forceUpdateInProgress by mapViewModel.forceUpdateInProgress.collectAsState()
+    val loadingSteps by mapViewModel.loadingSteps.collectAsState()
     var showSettings by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         mapViewModel.initializeGraph(context.applicationContext)
     }
     Box(modifier = Modifier.fillMaxSize()) {
         if (!isGraphReady) {
-            LoadingScreen(graphError)
+            LoadingScreen(graphError, loadingSteps)
         } else if (mbtilesFile == null) {
             PlaceholderMap()
         } else {
-            OfflineMapView(mbtilesFile, mapViewModel)
+            PersistentBottomSheet(
+                onSearchQuery = { query ->
+                    // TODO: Handle search query
+                }
+            ) {
+                OfflineMapView(mbtilesFile, mapViewModel)
+            }
         }
         if (isGraphReady) {
             TextButton(
@@ -104,21 +114,25 @@ fun OfflineMapScreen(mapViewModel: MapViewModel = viewModel()) {
 }
 
 @Composable
-private fun LoadingScreen(errorMessage: String?) {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            if (errorMessage == null) {
-                LinearProgressIndicator()
+private fun LoadingScreen(errorMessage: String?, loadingSteps: List<LoadingStep>) {
+    if (errorMessage != null) {
+        // Show error in a simple box
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    modifier = Modifier.padding(top = 16.dp),
+                    text = errorMessage,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.error
+                )
             }
-            Text(
-                modifier = Modifier.padding(top = 16.dp),
-                text = errorMessage ?: stringResource(R.string.graphhopper_loading_message),
-                style = MaterialTheme.typography.bodyLarge
-            )
         }
+    } else {
+        // Show stepped progress with dynamic steps from ViewModel
+        SteppedProgressScreen(steps = loadingSteps)
     }
 }
 
@@ -183,7 +197,7 @@ private fun OfflineMapView(mbtilesFile: File, mapViewModel: MapViewModel) {
                     withSource(GeoJsonSource(ROUTE_SOURCE_ID, EMPTY_ROUTE_GEOJSON))
                     withLayerAbove(
                         LineLayer(ROUTE_LAYER_BORDER_ID, ROUTE_SOURCE_ID).withProperties(
-                            lineColor("#1c3f7a"),
+                            lineColor("#0A1F3D"),
                             lineWidth(8f),
                             lineCap(Property.LINE_CAP_ROUND),
                             lineJoin(Property.LINE_JOIN_ROUND)
@@ -192,7 +206,7 @@ private fun OfflineMapView(mbtilesFile: File, mapViewModel: MapViewModel) {
                     )
                     withLayerAbove(
                         LineLayer(ROUTE_LAYER_ID, ROUTE_SOURCE_ID).withProperties(
-                            lineColor("#2b74ff"),
+                            lineColor("#1C3F7A"),
                             lineWidth(5f),
                             lineCap(Property.LINE_CAP_ROUND),
                             lineJoin(Property.LINE_JOIN_ROUND)

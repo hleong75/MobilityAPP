@@ -12,4 +12,16 @@
     <string name="graphhopper_force_update_description">Supprimer le cache GraphHopper et relancer l'importation.</string>
     <string name="settings_title">Paramètres</string>
     <string name="settings_close">Fermer</string>
+    
+    <!-- Loading steps -->
+    <string name="loading_step_title">Initialisation</string>
+    <string name="loading_step_map">Chargement de la carte</string>
+    <string name="loading_step_transport">Analyse des données de transport</string>
+    <string name="loading_step_network">Construction du réseau</string>
+    <string name="loading_step_optimize">Optimisation des trajets</string>
+    <string name="loading_steps_completed">%1$d / %2$d étapes complétées</string>
+    
+    <!-- Search -->
+    <string name="search_placeholder">Rechercher une destination...</string>
+    <string name="search_icon_description">Rechercher</string>
 </resources>
