@@ -145,7 +145,7 @@ object GraphHopperManager {
         withContext(Dispatchers.IO) {
             try {
                 Log.i(LOG_TAG, "Verifying files...")
-                Log.i(LOG_TAG, "OSM file found: ${cacheDir.exists()}")
+                Log.i(LOG_TAG, "Cache directory found: ${cacheDir.exists()}")
                 Log.i(LOG_TAG, "Starting GraphHopper import...")
                 val config = GraphHopperConfig().apply {
                     putObject("graph.location", cacheDir.absolutePath)
