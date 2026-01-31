@@ -45,13 +45,8 @@ class GraphHopperImportWorker(
                     gtfsFile = gtfsFile,
                     graphRoot = graphRoot
                 )
-            } catch (e: CancellationException) {
-                Log.w(TAG, "GraphHopper import cancelled during data import", e)
-                throw e
             } catch (e: Exception) {
-                Log.e(TAG, "GraphHopper data import failed", e)
-                cleanPartialGraphCache(graphRoot)
-                return Result.failure(buildFailureData(e))
+                return handleFailure(graphRoot, "GraphHopper data import failed", e)
             }
             updateProgress(80)
             try {
@@ -61,29 +56,22 @@ class GraphHopperImportWorker(
                     metadata
                 )
             } catch (e: Exception) {
-                Log.e(TAG, "GraphHopper metadata write failed", e)
-                cleanPartialGraphCache(graphRoot)
-                return Result.failure(buildFailureData(e))
+                return handleFailure(graphRoot, "GraphHopper metadata write failed", e)
             }
             updateProgress(90)
             try {
                 GraphHopperManager.init(graphRoot.absolutePath)
-            } catch (e: CancellationException) {
-                Log.w(TAG, "GraphHopper import cancelled during init", e)
-                throw e
             } catch (e: Exception) {
-                Log.e(TAG, "GraphHopper init failed", e)
-                cleanPartialGraphCache(graphRoot)
-                return Result.failure(buildFailureData(e))
+                return handleFailure(graphRoot, "GraphHopper init failed", e)
             }
             updateProgress(100)
             Result.success()
         } catch (e: CancellationException) {
             Log.w(TAG, "GraphHopper import cancelled", e)
-            withContext(NonCancellable) {
-                cleanPartialGraphCache(graphRoot)
-            }
+            cleanupAfterFailure(graphRoot)
             throw e
+        } catch (e: Exception) {
+            return handleFailure(graphRoot, "GraphHopper import failed", e)
         } finally {
             val durationMs = SystemClock.elapsedRealtime() - startTime
             Log.i(TAG, "GraphHopper import duration: ${durationMs}ms")
@@ -150,6 +138,25 @@ class GraphHopperImportWorker(
         if (metadataFile.exists() && !metadataFile.delete()) {
             Log.w(TAG, "Failed to delete graph metadata at ${metadataFile.absolutePath}")
         }
+    }
+
+    private suspend fun cleanupAfterFailure(graphRoot: File) {
+        withContext(NonCancellable) {
+            cleanPartialGraphCache(graphRoot)
+        }
+    }
+
+    private suspend fun handleFailure(
+        graphRoot: File,
+        message: String,
+        error: Exception
+    ): Result {
+        if (error is CancellationException) {
+            throw error
+        }
+        Log.e(TAG, message, error)
+        cleanupAfterFailure(graphRoot)
+        return Result.failure(buildFailureData(error))
     }
 
     private fun buildFailureData(error: Throwable): Data {
