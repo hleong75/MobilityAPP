@@ -33,6 +33,7 @@ object GraphHopperManager {
     private const val PROFILE_FOOT = "foot"
     private const val OUT_OF_MEMORY_MESSAGE =
         "OutOfMemoryError lors de l'import GraphHopper. Vérifiez que l'option 'Large Heap' est activée."
+    private const val DATA_ACCESS_TYPE = "MMAP_STORE"
     internal const val GRAPH_CACHE_DIR = "graph-cache"
     private const val ENCODED_VALUES = "foot_access,foot_average_speed,foot_priority"
     private const val MILLIS_TO_SECONDS = 1000.0
@@ -84,7 +85,7 @@ object GraphHopperManager {
                     putObject("graph.location", graphCacheDir.absolutePath)
                     putObject("datareader.file", osmFile.absolutePath)
                     putObject("gtfs.file", gtfsFile.absolutePath)
-                    putObject("graph.dataaccess", dataAccessType())
+                    putObject("graph.dataaccess", DATA_ACCESS_TYPE)
                     putObject("graph.elevation.provider", ELEVATION_PROVIDER_NOOP)
                     putObject("gtfs.trip_based", false)
                     applyProfiles(this)
@@ -148,7 +149,7 @@ object GraphHopperManager {
                 Log.e(LOG_TAG, "Démarrage import GraphHopper...")
                 val config = GraphHopperConfig().apply {
                     putObject("graph.location", cacheDir.absolutePath)
-                    putObject("graph.dataaccess", dataAccessType())
+                    putObject("graph.dataaccess", DATA_ACCESS_TYPE)
                     putObject("graph.elevation.provider", ELEVATION_PROVIDER_NOOP)
                     putObject("gtfs.trip_based", false)
                     applyProfiles(this)
@@ -232,10 +233,6 @@ object GraphHopperManager {
             hopperInstance.locationIndex,
             hopperInstance.gtfsStorage
         ).createWithoutRealtimeFeed()
-    }
-
-    private fun dataAccessType(): String {
-        return "MMAP_STORE"
     }
 
     private fun logOutOfMemory(error: OutOfMemoryError) {
