@@ -101,10 +101,11 @@ object GraphHopperManager {
                     _isReady.value = true
                 }
                 Log.e(LOG_TAG, "Import terminé !")
-            } catch (e: Throwable) {
-                if (e is OutOfMemoryError) {
-                    Log.e(LOG_TAG, OUT_OF_MEMORY_MESSAGE)
-                }
+            } catch (e: OutOfMemoryError) {
+                Log.e(LOG_TAG, OUT_OF_MEMORY_MESSAGE)
+                Log.e(LOG_TAG, "CRASH", e)
+                throw e
+            } catch (e: Exception) {
                 Log.e(LOG_TAG, "CRASH", e)
                 throw e
             }
@@ -164,10 +165,11 @@ object GraphHopperManager {
                     _isReady.value = true
                 }
                 Log.e(LOG_TAG, "Import terminé !")
-            } catch (e: Throwable) {
-                if (e is OutOfMemoryError) {
-                    Log.e(LOG_TAG, OUT_OF_MEMORY_MESSAGE)
-                }
+            } catch (e: OutOfMemoryError) {
+                Log.e(LOG_TAG, OUT_OF_MEMORY_MESSAGE)
+                Log.e(LOG_TAG, "CRASH", e)
+                throw e
+            } catch (e: Exception) {
                 Log.e(LOG_TAG, "CRASH", e)
                 throw e
             }
