@@ -17,6 +17,8 @@ import androidx.work.WorkerParameters
 import com.example.mobilityapp.R
 import com.example.mobilityapp.presentation.MainActivity
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
 import java.io.File
 
 class GraphHopperImportWorker(
@@ -45,7 +47,6 @@ class GraphHopperImportWorker(
                 )
             } catch (e: CancellationException) {
                 Log.w(TAG, "GraphHopper import cancelled during data import", e)
-                cleanPartialGraphCache(graphRoot)
                 throw e
             } catch (e: Exception) {
                 Log.e(TAG, "GraphHopper data import failed", e)
@@ -69,7 +70,6 @@ class GraphHopperImportWorker(
                 GraphHopperManager.init(graphRoot.absolutePath)
             } catch (e: CancellationException) {
                 Log.w(TAG, "GraphHopper import cancelled during init", e)
-                cleanPartialGraphCache(graphRoot)
                 throw e
             } catch (e: Exception) {
                 Log.e(TAG, "GraphHopper init failed", e)
@@ -80,6 +80,9 @@ class GraphHopperImportWorker(
             Result.success()
         } catch (e: CancellationException) {
             Log.w(TAG, "GraphHopper import cancelled", e)
+            withContext(NonCancellable) {
+                cleanPartialGraphCache(graphRoot)
+            }
             throw e
         } catch (e: Exception) {
             Log.e(TAG, "GraphHopper import failed", e)
@@ -145,9 +148,14 @@ class GraphHopperImportWorker(
         }
         val cacheDir = File(graphRoot, GraphHopperManager.GRAPH_CACHE_DIR)
         if (cacheDir.exists()) {
-            cacheDir.deleteRecursively()
+            if (!cacheDir.deleteRecursively()) {
+                Log.w(TAG, "Failed to delete graph cache at ${cacheDir.absolutePath}")
+            }
         }
-        File(graphRoot, GraphMetadataStore.VERSION_FILE_NAME).delete()
+        val metadataFile = File(graphRoot, GraphMetadataStore.VERSION_FILE_NAME)
+        if (metadataFile.exists() && !metadataFile.delete()) {
+            Log.w(TAG, "Failed to delete graph metadata at ${metadataFile.absolutePath}")
+        }
     }
 
     companion object {
