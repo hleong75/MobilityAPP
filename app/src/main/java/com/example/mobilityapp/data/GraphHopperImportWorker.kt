@@ -80,11 +80,9 @@ class GraphHopperImportWorker(
             Result.success()
         } catch (e: CancellationException) {
             Log.w(TAG, "GraphHopper import cancelled", e)
-            cleanPartialGraphCache(graphRoot)
             throw e
         } catch (e: Exception) {
             Log.e(TAG, "GraphHopper import failed", e)
-            cleanPartialGraphCache(graphRoot)
             return Result.failure()
         } finally {
             val durationMs = SystemClock.elapsedRealtime() - startTime
@@ -129,13 +127,6 @@ class GraphHopperImportWorker(
         manager.createNotificationChannel(channel)
     }
 
-    override fun onStopped() {
-        super.onStopped()
-        val graphRootPath = inputData.getString(KEY_GRAPH_ROOT_PATH) ?: return
-        cleanPartialGraphCache(File(graphRootPath))
-        Log.w(TAG, "GraphHopper import stopped; cleaned partial cache.")
-    }
-
     private suspend fun updateProgress(percent: Int) {
         if (isStopped) return
         setProgress(
@@ -146,9 +137,6 @@ class GraphHopperImportWorker(
     }
 
     private fun cleanPartialGraphCache(graphRoot: File) {
-        if (cacheCleaned) {
-            return
-        }
         synchronized(this) {
             if (cacheCleaned) {
                 return
