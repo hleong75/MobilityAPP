@@ -77,9 +77,9 @@ object GraphHopperManager {
     ) {
         withContext(Dispatchers.IO) {
             try {
-                Log.e(LOG_TAG, "Verifying files...")
-                Log.e(LOG_TAG, "OSM file found: ${osmFile.exists()}")
-                Log.e(LOG_TAG, "Starting GraphHopper import...")
+                Log.i(LOG_TAG, "Verifying files...")
+                Log.i(LOG_TAG, "OSM file found: ${osmFile.exists()}")
+                Log.i(LOG_TAG, "Starting GraphHopper import...")
                 val graphCacheDir = File(graphRoot, GRAPH_CACHE_DIR)
                 val config = GraphHopperConfig().apply {
                     putObject("graph.location", graphCacheDir.absolutePath)
@@ -101,7 +101,7 @@ object GraphHopperManager {
                     ptRouter = router
                     _isReady.value = true
                 }
-                Log.e(LOG_TAG, "Import completed!")
+                Log.i(LOG_TAG, "Import completed!")
             } catch (e: OutOfMemoryError) {
                 logOutOfMemory(e)
                 throw e
@@ -144,9 +144,9 @@ object GraphHopperManager {
     private suspend fun loadGraph(cacheDir: File) {
         withContext(Dispatchers.IO) {
             try {
-                Log.e(LOG_TAG, "Verifying files...")
-                Log.e(LOG_TAG, "OSM file found: ${cacheDir.exists()}")
-                Log.e(LOG_TAG, "Starting GraphHopper import...")
+                Log.i(LOG_TAG, "Verifying files...")
+                Log.i(LOG_TAG, "OSM file found: ${cacheDir.exists()}")
+                Log.i(LOG_TAG, "Starting GraphHopper import...")
                 val config = GraphHopperConfig().apply {
                     putObject("graph.location", cacheDir.absolutePath)
                     putObject("graph.dataaccess", DATA_ACCESS_TYPE)
@@ -164,7 +164,7 @@ object GraphHopperManager {
                     ptRouter = router
                     _isReady.value = true
                 }
-                Log.e(LOG_TAG, "Import completed!")
+                Log.i(LOG_TAG, "Import completed!")
             } catch (e: OutOfMemoryError) {
                 logOutOfMemory(e)
                 throw e
