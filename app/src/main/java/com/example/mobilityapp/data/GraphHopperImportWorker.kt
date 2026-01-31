@@ -51,7 +51,7 @@ class GraphHopperImportWorker(
             } catch (e: Exception) {
                 Log.e(TAG, "GraphHopper data import failed", e)
                 cleanPartialGraphCache(graphRoot)
-                return Result.failure()
+                return Result.failure(buildFailureData(e))
             }
             updateProgress(80)
             try {
@@ -63,7 +63,7 @@ class GraphHopperImportWorker(
             } catch (e: Exception) {
                 Log.e(TAG, "GraphHopper metadata write failed", e)
                 cleanPartialGraphCache(graphRoot)
-                return Result.failure()
+                return Result.failure(buildFailureData(e))
             }
             updateProgress(90)
             try {
@@ -74,7 +74,7 @@ class GraphHopperImportWorker(
             } catch (e: Exception) {
                 Log.e(TAG, "GraphHopper init failed", e)
                 cleanPartialGraphCache(graphRoot)
-                return Result.failure()
+                return Result.failure(buildFailureData(e))
             }
             updateProgress(100)
             Result.success()
@@ -86,7 +86,7 @@ class GraphHopperImportWorker(
             throw e
         } catch (e: Exception) {
             Log.e(TAG, "GraphHopper import failed", e)
-            return Result.failure()
+            return Result.failure(buildFailureData(e))
         } finally {
             val durationMs = SystemClock.elapsedRealtime() - startTime
             Log.i(TAG, "GraphHopper import finished in ${durationMs}ms")
@@ -155,11 +155,18 @@ class GraphHopperImportWorker(
         }
     }
 
+    private fun buildFailureData(error: Throwable): Data {
+        return Data.Builder()
+            .putString(KEY_FAILURE_MESSAGE, error.message)
+            .build()
+    }
+
     companion object {
         const val KEY_OSM_PATH = "osm_path"
         const val KEY_GTFS_PATH = "gtfs_path"
         const val KEY_GRAPH_ROOT_PATH = "graph_root_path"
         const val KEY_PROGRESS_PERCENT = "progress_percent"
+        const val KEY_FAILURE_MESSAGE = "failure_message"
 
         private const val NOTIFICATION_CHANNEL_ID = "graphhopper_import_channel"
         private const val NOTIFICATION_ID = 1001
