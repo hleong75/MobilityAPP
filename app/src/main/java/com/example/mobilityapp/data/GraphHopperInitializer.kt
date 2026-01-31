@@ -33,7 +33,8 @@ object GraphHopperInitializer {
     private const val DEFAULT_OSM_FILE = "data.osm.pbf"
     private const val DEFAULT_GTFS_FILE = "data.gtfs.zip"
     private const val WORK_NAME = "graphhopper_import"
-    private const val READY_TIMEOUT_MS = 60_000L
+    private const val READY_TIMEOUT_MINUTES = 10L
+    private const val READY_TIMEOUT_MS = READY_TIMEOUT_MINUTES * 60 * 1000L
     const val DEFAULT_ERROR_MESSAGE = "Erreur: Import GraphHopper"
 
     fun start(context: Context): Flow<InitializationState> = flow {
@@ -70,7 +71,7 @@ object GraphHopperInitializer {
             Log.e("GH_DEBUG", "Timeout during GraphHopper init", e)
             WorkManager.getInstance(context)
                 .cancelUniqueWork(WORK_NAME)
-            emit(InitializationState.Error("Délai dépassé après 60s"))
+            emit(InitializationState.Error("Délai dépassé après ${READY_TIMEOUT_MINUTES} minutes"))
         } catch (e: Exception) {
             Log.e("GH_DEBUG", "CRASH", e)
             emit(InitializationState.Error(e.message ?: DEFAULT_ERROR_MESSAGE))

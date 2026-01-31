@@ -5,6 +5,7 @@ import com.example.mobilityapp.domain.model.Itinerary
 import com.example.mobilityapp.domain.model.Leg
 import com.example.mobilityapp.domain.model.RouteCoordinate
 import com.example.mobilityapp.domain.model.TravelMode
+import android.os.SystemClock
 import android.util.Log
 import com.graphhopper.GHRequest
 import com.graphhopper.GHResponse
@@ -29,6 +30,7 @@ import java.util.Date
 
 object GraphHopperManager {
     private const val LOG_TAG = "GH_DEBUG"
+    private const val PERF_LOG_TAG = "GH_PERF"
     private const val DEFAULT_USE_MMAP_STORE = true
     private const val PROFILE_FOOT = "foot"
     internal const val GRAPH_CACHE_DIR = "graph-cache"
@@ -87,9 +89,13 @@ object GraphHopperManager {
                     applyProfiles(this)
                 }
 
-                val gtfsHopper = GraphHopperGtfs(config)
+                val gtfsHopper = PerfGraphHopperGtfs(config)
                 gtfsHopper.init(config)
+                val importStart = SystemClock.elapsedRealtime()
+                Log.w(PERF_LOG_TAG, "Starting graph construction")
                 gtfsHopper.importOrLoad()
+                val importDuration = SystemClock.elapsedRealtime() - importStart
+                Log.w(PERF_LOG_TAG, "Graph construction duration: ${importDuration}ms")
                 val router = buildPtRouter(config, gtfsHopper)
                 synchronized(this@GraphHopperManager) {
                     hopper = gtfsHopper
@@ -225,6 +231,22 @@ object GraphHopperManager {
 
     private fun dataAccessType(useMmapStore: Boolean): String {
         return if (useMmapStore) "MMAP_STORE" else "RAM_STORE"
+    }
+
+    private class PerfGraphHopperGtfs(config: GraphHopperConfig) : GraphHopperGtfs(config) {
+        override fun importOSM() {
+            val start = SystemClock.elapsedRealtime()
+            super.importOSM()
+            val duration = SystemClock.elapsedRealtime() - start
+            Log.w(PERF_LOG_TAG, "OSM import duration: ${duration}ms")
+        }
+
+        override fun importPublicTransit() {
+            val start = SystemClock.elapsedRealtime()
+            super.importPublicTransit()
+            val duration = SystemClock.elapsedRealtime() - start
+            Log.w(PERF_LOG_TAG, "GTFS import duration: ${duration}ms")
+        }
     }
 
 }

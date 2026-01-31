@@ -37,30 +37,43 @@ class GraphHopperImportWorker(
         val gtfsFile = File(gtfsPath)
         val startTime = SystemClock.elapsedRealtime()
         return try {
-            setForeground(createForegroundInfo())
+            runCatching { setForeground(createForegroundInfo()) }
+                .onFailure { Log.w(TAG, "Failed to set foreground notification; import will proceed", it) }
+            runCatching { cleanPartialGraphCache(graphRoot) }
+                .onFailure { Log.w(TAG, "Failed to clean graph cache before import", it) }
             updateProgress(10)
             try {
+                val importStart = SystemClock.elapsedRealtime()
+                Log.w("GH_PERF", "Starting OSM/GTFS graph build")
                 GraphHopperManager.importData(
                     osmFile = osmFile,
                     gtfsFile = gtfsFile,
                     graphRoot = graphRoot
                 )
+                val importDuration = SystemClock.elapsedRealtime() - importStart
+                Log.w("GH_PERF", "Import graph (OSM+GTFS+construction) duration: ${importDuration}ms")
             } catch (e: Exception) {
                 return handleFailure(graphRoot, "GraphHopper data import failed", e)
             }
             updateProgress(80)
             try {
+                val metadataStart = SystemClock.elapsedRealtime()
                 val metadata = GraphMetadataStore.fromFiles(osmFile, gtfsFile)
                 GraphMetadataStore.write(
                     File(graphRoot, GraphMetadataStore.VERSION_FILE_NAME),
                     metadata
                 )
+                val metadataDuration = SystemClock.elapsedRealtime() - metadataStart
+                Log.w("GH_PERF", "Metadata write duration: ${metadataDuration}ms")
             } catch (e: Exception) {
                 return handleFailure(graphRoot, "GraphHopper metadata write failed", e)
             }
             updateProgress(90)
             try {
+                val initStart = SystemClock.elapsedRealtime()
                 GraphHopperManager.init(graphRoot.absolutePath)
+                val initDuration = SystemClock.elapsedRealtime() - initStart
+                Log.w("GH_PERF", "Graph init duration: ${initDuration}ms")
             } catch (e: Exception) {
                 return handleFailure(graphRoot, "GraphHopper init failed", e)
             }
