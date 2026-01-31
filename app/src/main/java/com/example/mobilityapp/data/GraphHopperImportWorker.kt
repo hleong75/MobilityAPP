@@ -86,10 +86,11 @@ class GraphHopperImportWorker(
             throw e
         } catch (e: Exception) {
             Log.e(TAG, "GraphHopper import failed", e)
+            cleanPartialGraphCache(graphRoot)
             return Result.failure(buildFailureData(e))
         } finally {
             val durationMs = SystemClock.elapsedRealtime() - startTime
-            Log.i(TAG, "GraphHopper import finished in ${durationMs}ms")
+            Log.i(TAG, "GraphHopper import completed in ${durationMs}ms")
         }
     }
 
@@ -157,7 +158,7 @@ class GraphHopperImportWorker(
 
     private fun buildFailureData(error: Throwable): Data {
         return Data.Builder()
-            .putString(KEY_FAILURE_MESSAGE, error.message)
+            .putString(KEY_FAILURE_MESSAGE, error.message ?: error.toString())
             .build()
     }
 
