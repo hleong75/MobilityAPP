@@ -84,13 +84,9 @@ class GraphHopperImportWorker(
                 cleanPartialGraphCache(graphRoot)
             }
             throw e
-        } catch (e: Exception) {
-            Log.e(TAG, "GraphHopper import failed", e)
-            cleanPartialGraphCache(graphRoot)
-            return Result.failure(buildFailureData(e))
         } finally {
             val durationMs = SystemClock.elapsedRealtime() - startTime
-            Log.i(TAG, "GraphHopper import completed in ${durationMs}ms")
+            Log.i(TAG, "GraphHopper import duration: ${durationMs}ms")
         }
     }
 
