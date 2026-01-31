@@ -32,7 +32,7 @@ object GraphHopperManager {
     private const val ELEVATION_PROVIDER_NOOP = "noop"
     private const val PROFILE_FOOT = "foot"
     private const val OUT_OF_MEMORY_MESSAGE =
-        "OutOfMemoryError lors de l'import GraphHopper. Vérifiez que l'option 'Large Heap' est activée."
+        "OutOfMemoryError during GraphHopper import. Verify that the Large Heap option is enabled."
     internal const val GRAPH_CACHE_DIR = "graph-cache"
     private const val ENCODED_VALUES = "foot_access,foot_average_speed,foot_priority"
     private const val MILLIS_TO_SECONDS = 1000.0
@@ -102,8 +102,7 @@ object GraphHopperManager {
                 }
                 Log.e(LOG_TAG, "Import terminé !")
             } catch (e: OutOfMemoryError) {
-                Log.e(LOG_TAG, OUT_OF_MEMORY_MESSAGE)
-                Log.e(LOG_TAG, "CRASH", e)
+                logOutOfMemory(e)
                 throw e
             } catch (e: Exception) {
                 Log.e(LOG_TAG, "CRASH", e)
@@ -166,8 +165,7 @@ object GraphHopperManager {
                 }
                 Log.e(LOG_TAG, "Import terminé !")
             } catch (e: OutOfMemoryError) {
-                Log.e(LOG_TAG, OUT_OF_MEMORY_MESSAGE)
-                Log.e(LOG_TAG, "CRASH", e)
+                logOutOfMemory(e)
                 throw e
             } catch (e: Exception) {
                 Log.e(LOG_TAG, "CRASH", e)
@@ -238,6 +236,10 @@ object GraphHopperManager {
 
     private fun dataAccessType(): String {
         return "MMAP_STORE"
+    }
+
+    private fun logOutOfMemory(error: OutOfMemoryError) {
+        Log.e(LOG_TAG, OUT_OF_MEMORY_MESSAGE, error)
     }
 
 }
