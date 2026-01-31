@@ -151,9 +151,6 @@ class GraphHopperImportWorker(
         message: String,
         error: Exception
     ): Result {
-        if (error is CancellationException) {
-            throw error
-        }
         Log.e(TAG, message, error)
         cleanupAfterFailure(graphRoot)
         return Result.failure(buildFailureData(error))
