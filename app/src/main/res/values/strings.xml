@@ -20,6 +20,14 @@
     <string name="loading_step_network">Construction du réseau</string>
     <string name="loading_step_optimize">Optimisation des trajets</string>
     <string name="loading_steps_completed">%1$d / %2$d étapes complétées</string>
+
+    <!-- Data status dashboard -->
+    <string name="data_status_missing_files_title">Fichiers manquants</string>
+    <string name="data_status_scan_downloads">Scanner le dossier Download</string>
+    <string name="data_status_importing_graph">Construction du graphe de transport en cours... (Cela peut prendre plusieurs minutes)</string>
+    <string name="data_status_ready">Données à jour</string>
+    <string name="data_status_osm_date">Données OSM : %1$s</string>
+    <string name="data_status_bullet">• %1$s</string>
     
     <!-- Search -->
     <string name="search_placeholder">Rechercher une destination...</string>

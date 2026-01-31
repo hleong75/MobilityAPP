@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -32,10 +33,12 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.mobilityapp.R
 import com.example.mobilityapp.data.GraphHopperManager
+import com.example.mobilityapp.data.InitializationState
 import com.example.mobilityapp.domain.model.RouteCoordinate
 import com.example.mobilityapp.presentation.components.LoadingStep
 import com.example.mobilityapp.presentation.components.SteppedProgressScreen
 import com.example.mobilityapp.presentation.components.PersistentBottomSheet
+import com.example.mobilityapp.presentation.components.DataStatusDashboard
 import org.maplibre.android.MapLibre
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.maps.MapView
@@ -74,13 +77,21 @@ fun OfflineMapScreen(mapViewModel: MapViewModel = viewModel()) {
     val graphError by mapViewModel.graphError.collectAsState()
     val forceUpdateInProgress by mapViewModel.forceUpdateInProgress.collectAsState()
     val loadingSteps by mapViewModel.loadingSteps.collectAsState()
+    val initializationState by mapViewModel.initializationState.collectAsState()
+    val osmLastModified by mapViewModel.osmLastModified.collectAsState()
     var showSettings by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         mapViewModel.initializeGraph(context.applicationContext)
     }
     Box(modifier = Modifier.fillMaxSize()) {
         if (!isGraphReady) {
-            LoadingScreen(graphError, loadingSteps)
+            LoadingScreen(
+                graphError = graphError,
+                loadingSteps = loadingSteps,
+                initializationState = initializationState,
+                osmLastModified = osmLastModified,
+                onScanDownloads = { mapViewModel.scanDownloads(context.applicationContext) }
+            )
         } else if (mbtilesFile == null) {
             PlaceholderMap()
         } else {
@@ -114,8 +125,14 @@ fun OfflineMapScreen(mapViewModel: MapViewModel = viewModel()) {
 }
 
 @Composable
-private fun LoadingScreen(errorMessage: String?, loadingSteps: List<LoadingStep>) {
-    if (errorMessage != null) {
+private fun LoadingScreen(
+    graphError: String?,
+    loadingSteps: List<LoadingStep>,
+    initializationState: InitializationState,
+    osmLastModified: Long?,
+    onScanDownloads: () -> Unit
+) {
+    if (graphError != null) {
         // Show error in a simple box
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Column(
@@ -124,7 +141,7 @@ private fun LoadingScreen(errorMessage: String?, loadingSteps: List<LoadingStep>
             ) {
                 Text(
                     modifier = Modifier.padding(top = 16.dp),
-                    text = errorMessage,
+                    text = graphError,
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.error
                 )
@@ -132,7 +149,24 @@ private fun LoadingScreen(errorMessage: String?, loadingSteps: List<LoadingStep>
         }
     } else {
         // Show stepped progress with dynamic steps from ViewModel
-        SteppedProgressScreen(steps = loadingSteps)
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                DataStatusDashboard(
+                    initializationState = initializationState,
+                    osmLastModified = osmLastModified,
+                    onScanDownloads = onScanDownloads,
+                    modifier = Modifier.widthIn(max = 420.dp)
+                )
+                SteppedProgressScreen(steps = loadingSteps, modifier = Modifier.widthIn(max = 420.dp))
+            }
+        }
     }
 }
 

@@ -1,7 +1,10 @@
 package com.example.mobilityapp.data
 
 import android.content.Context
+import android.content.pm.PackageManager
 import android.util.Log
+import android.os.Environment
+import android.os.Build
 import androidx.work.Data
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
@@ -18,7 +21,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 
 sealed class InitializationState {
-    data object MissingFiles : InitializationState()
+    data class MissingFiles(val missingFiles: List<String>) : InitializationState()
     data object NeedsImport : InitializationState()
     data object Importing : InitializationState()
     data object Ready : InitializationState()
@@ -41,7 +44,7 @@ object GraphHopperInitializer {
             val missingFiles = getMissingFiles(osmFile, gtfsFile)
             if (missingFiles.isNotEmpty()) {
                 Log.e("GH_DEBUG", "Fichiers manquants: ${missingFiles.joinToString(", ")}")
-                emit(InitializationState.MissingFiles)
+                emit(InitializationState.MissingFiles(missingFiles))
                 return@flow
             }
             val shouldRebuild = shouldRebuildGraph(graphRoot, osmFile, gtfsFile)
@@ -96,6 +99,43 @@ object GraphHopperInitializer {
         val osmFile = File(dataDir, DEFAULT_OSM_FILE)
         val gtfsFile = File(dataDir, DEFAULT_GTFS_FILE)
         return getMissingFiles(osmFile, gtfsFile)
+    }
+
+    fun getOsmLastModified(context: Context): Long? {
+        val graphRoot = context.filesDir
+        val dataDir = context.getExternalFilesDir(null) ?: graphRoot
+        val osmFile = File(dataDir, DEFAULT_OSM_FILE)
+        return osmFile.takeIf { it.exists() }?.lastModified()
+    }
+
+    fun copyMissingFilesFromDownloads(context: Context): Boolean {
+        val graphRoot = context.filesDir
+        val dataDir = context.getExternalFilesDir(null) ?: graphRoot
+        val needsPermission = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU
+        if (needsPermission) {
+            val canReadStorage = context.checkSelfPermission(
+                android.Manifest.permission.READ_EXTERNAL_STORAGE
+            ) == PackageManager.PERMISSION_GRANTED
+            if (!canReadStorage) {
+                Log.w("GH_DEBUG", "READ_EXTERNAL_STORAGE permission not granted.")
+                return false
+            }
+        }
+        val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+        val osmFile = File(dataDir, DEFAULT_OSM_FILE)
+        val gtfsFile = File(dataDir, DEFAULT_GTFS_FILE)
+        val missingFiles = getMissingFiles(osmFile, gtfsFile)
+        var copiedAny = false
+        missingFiles.forEach { fileName ->
+            val source = File(downloadsDir, fileName)
+            val target = File(dataDir, fileName)
+            if (source.exists() && source.isFile) {
+                runCatching { source.copyTo(target, overwrite = true) }
+                    .onFailure { Log.e("GH_DEBUG", "Failed to copy $fileName from downloads.", it) }
+                    .onSuccess { copiedAny = true }
+            }
+        }
+        return copiedAny
     }
 
     private fun getMissingFiles(osmFile: File, gtfsFile: File): List<String> {

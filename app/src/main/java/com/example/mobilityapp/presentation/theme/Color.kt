@@ -20,3 +20,6 @@ val SlateSurfaceDark = Color(0xFF263238)
 val OnDeepMarine = Color.White
 val OnSlate = Color(0xFF212121)
 val OnSlateDark = Color(0xFFECF0F1)
+
+// Status colors
+val StatusSuccess = Color(0xFF2E7D32)

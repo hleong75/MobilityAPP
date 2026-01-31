@@ -38,6 +38,13 @@ class MapViewModel(
     private val _loadingSteps = MutableStateFlow<List<LoadingStep>>(emptyList())
     val loadingSteps: StateFlow<List<LoadingStep>> = _loadingSteps.asStateFlow()
 
+    private val _initializationState =
+        MutableStateFlow<InitializationState>(InitializationState.NeedsImport)
+    val initializationState: StateFlow<InitializationState> = _initializationState.asStateFlow()
+
+    private val _osmLastModified = MutableStateFlow<Long?>(null)
+    val osmLastModified: StateFlow<Long?> = _osmLastModified.asStateFlow()
+
     fun initializeGraph(context: Context) {
         if (GraphHopperManager.isReady.value) {
             return
@@ -56,15 +63,16 @@ class MapViewModel(
                 // Update step 1: Loading map (initial step)
                 updateLoadingStep(0, true)
                 GraphHopperInitializer.start(context).collect { state ->
+                    _initializationState.value = state
                     when (state) {
-                        InitializationState.MissingFiles -> {
-                            val missingFiles = GraphHopperInitializer.getMissingFiles(context)
-                            _graphError.value = "$MISSING_FILES_PREFIX ${missingFiles.joinToString(", ")}"
+                        is InitializationState.MissingFiles -> {
+                            _osmLastModified.value = null
                         }
                         InitializationState.Ready -> {
                             updateLoadingStep(1, true)
                             updateLoadingStep(2, true)
                             updateLoadingStep(3, true)
+                            _osmLastModified.value = GraphHopperInitializer.getOsmLastModified(context)
                         }
                         is InitializationState.Error -> {
                             _graphError.value = state.message
@@ -107,6 +115,20 @@ class MapViewModel(
             } finally {
                 _forceUpdateInProgress.value = false
             }
+        }
+    }
+
+    fun scanDownloads(context: Context) {
+        _graphError.value = null
+        viewModelScope.launch(Dispatchers.IO) {
+            val copiedAny = GraphHopperInitializer.copyMissingFilesFromDownloads(context)
+            if (!copiedAny) {
+                val missingFiles = GraphHopperInitializer.getMissingFiles(context)
+                if (missingFiles.isNotEmpty()) {
+                    _graphError.value = "$MISSING_FILES_PREFIX ${missingFiles.joinToString(", ")}"
+                }
+            }
+            initializeGraph(context)
         }
     }
 
