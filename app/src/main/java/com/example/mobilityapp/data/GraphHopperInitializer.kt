@@ -8,6 +8,7 @@ import android.os.Build
 import androidx.work.Data
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -93,6 +94,30 @@ object GraphHopperInitializer {
         }
     }
 
+    suspend fun forceRefreshCheck(context: Context) {
+        withContext(Dispatchers.IO) {
+            val graphRoot = context.filesDir
+            val dataDir = context.getExternalFilesDir(null) ?: graphRoot
+            val osmFile = File(dataDir, DEFAULT_OSM_FILE)
+            val gtfsFile = File(dataDir, DEFAULT_GTFS_FILE)
+            val missingFiles = getMissingFiles(osmFile, gtfsFile)
+            if (missingFiles.isNotEmpty()) {
+                Log.e("GH_DEBUG", "Fichiers manquants: ${missingFiles.joinToString(", ")}")
+                return@withContext
+            }
+            val versionFile = File(graphRoot, GraphMetadataStore.VERSION_FILE_NAME)
+            val savedMetadata = GraphMetadataStore.read(versionFile) ?: return@withContext
+            val currentMetadata = GraphMetadataStore.fromFiles(osmFile, gtfsFile)
+            val hasChanges = savedMetadata != currentMetadata
+            if (!hasChanges || isImportRunning(context)) {
+                return@withContext
+            }
+            deleteGraphCache(graphRoot)
+            GraphHopperManager.reset()
+            enqueueImport(context, graphRoot, osmFile, gtfsFile)
+        }
+    }
+
     fun getMissingFiles(context: Context): List<String> {
         val graphRoot = context.filesDir
         val dataDir = context.getExternalFilesDir(null) ?: graphRoot
@@ -165,6 +190,18 @@ object GraphHopperInitializer {
             .setInputData(inputData)
             .build()
         workManager.enqueueUniqueWork(WORK_NAME, ExistingWorkPolicy.REPLACE, request)
+    }
+
+    private suspend fun isImportRunning(context: Context): Boolean {
+        return withContext(Dispatchers.IO) {
+            val workInfos = WorkManager.getInstance(context)
+                .getWorkInfosForUniqueWork(WORK_NAME)
+                .get()
+            workInfos.any { workInfo ->
+                workInfo.state == WorkInfo.State.RUNNING ||
+                    workInfo.state == WorkInfo.State.ENQUEUED
+            }
+        }
     }
 
     private fun deleteGraphCache(graphRoot: File) {
