@@ -23,6 +23,8 @@ class GraphHopperImportWorker(
     private val appContext: Context,
     workerParams: WorkerParameters
 ) : CoroutineWorker(appContext, workerParams) {
+    @Volatile
+    private var cacheCleaned = false
 
     override suspend fun doWork(): Result {
         val osmPath = inputData.getString(KEY_OSM_PATH) ?: return Result.failure()
@@ -144,6 +146,15 @@ class GraphHopperImportWorker(
     }
 
     private fun cleanPartialGraphCache(graphRoot: File) {
+        if (cacheCleaned) {
+            return
+        }
+        synchronized(this) {
+            if (cacheCleaned) {
+                return
+            }
+            cacheCleaned = true
+        }
         val cacheDir = File(graphRoot, GraphHopperManager.GRAPH_CACHE_DIR)
         if (cacheDir.exists()) {
             cacheDir.deleteRecursively()
