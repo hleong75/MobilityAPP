@@ -29,6 +29,16 @@ class GraphHopperImportWorker(
     private val cacheCleaned = AtomicBoolean(false)
 
     override suspend fun doWork(): Result {
+        try {
+            setForeground(createForegroundInfo())
+        } catch (e: Exception) {
+            Log.e(
+                TAG,
+                "Failed to set foreground notification (check notification channel/permissions); aborting import",
+                e
+            )
+            return Result.failure(buildFailureData(e))
+        }
         val osmPath = inputData.getString(KEY_OSM_PATH) ?: return Result.failure()
         val gtfsPath = inputData.getString(KEY_GTFS_PATH) ?: return Result.failure()
         val graphRootPath = inputData.getString(KEY_GRAPH_ROOT_PATH) ?: return Result.failure()
@@ -37,10 +47,15 @@ class GraphHopperImportWorker(
         val gtfsFile = File(gtfsPath)
         val startTime = SystemClock.elapsedRealtime()
         return try {
-            runCatching { setForeground(createForegroundInfo()) }
-                .onFailure { Log.w(TAG, "Failed to set foreground notification; import will proceed", it) }
             runCatching { cleanPartialGraphCache(graphRoot) }
-                .onFailure { Log.w(TAG, "Failed to clean graph cache before import", it) }
+                .onFailure { Log.e(TAG, "Failed to clean graph cache before import", it) }
+            val cacheDir = File(graphRoot, GraphHopperManager.GRAPH_CACHE_DIR)
+            val metadataFile = File(graphRoot, GraphMetadataStore.VERSION_FILE_NAME)
+            if (cacheDir.exists() || metadataFile.exists()) {
+                val error = IllegalStateException("Failed to remove existing graph cache before import")
+                Log.e(TAG, "Graph cache still present after cleanup; aborting import", error)
+                return Result.failure(buildFailureData(error))
+            }
             updateProgress(10)
             try {
                 val importStart = SystemClock.elapsedRealtime()

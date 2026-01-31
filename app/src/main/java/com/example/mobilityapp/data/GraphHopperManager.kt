@@ -89,7 +89,7 @@ object GraphHopperManager {
                     applyProfiles(this)
                 }
 
-                val gtfsHopper = PerfGraphHopperGtfs(config)
+                val gtfsHopper = PerformanceLoggingGraphHopperGtfs(config)
                 gtfsHopper.init(config)
                 val importStart = SystemClock.elapsedRealtime()
                 Log.w(PERF_LOG_TAG, "Starting graph construction")
@@ -233,7 +233,10 @@ object GraphHopperManager {
         return if (useMmapStore) "MMAP_STORE" else "RAM_STORE"
     }
 
-    private class PerfGraphHopperGtfs(config: GraphHopperConfig) : GraphHopperGtfs(config) {
+    /**
+     * Adds timing logs for OSM and GTFS import phases.
+     */
+    private class PerformanceLoggingGraphHopperGtfs(config: GraphHopperConfig) : GraphHopperGtfs(config) {
         override fun importOSM() {
             val start = SystemClock.elapsedRealtime()
             super.importOSM()

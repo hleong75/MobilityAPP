@@ -34,7 +34,7 @@ object GraphHopperInitializer {
     private const val DEFAULT_GTFS_FILE = "data.gtfs.zip"
     private const val WORK_NAME = "graphhopper_import"
     private const val READY_TIMEOUT_MINUTES = 10L
-    private const val READY_TIMEOUT_MS = READY_TIMEOUT_MINUTES * 60 * 1000L
+    private const val READY_TIMEOUT_MS = READY_TIMEOUT_MINUTES * 60_000L
     const val DEFAULT_ERROR_MESSAGE = "Erreur: Import GraphHopper"
 
     fun start(context: Context): Flow<InitializationState> = flow {
