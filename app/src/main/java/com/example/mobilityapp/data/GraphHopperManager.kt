@@ -32,7 +32,7 @@ object GraphHopperManager {
     private const val ELEVATION_PROVIDER_NOOP = "noop"
     private const val PROFILE_FOOT = "foot"
     private const val OUT_OF_MEMORY_MESSAGE =
-        "OutOfMemoryError during GraphHopper import. Verify that the Large Heap option is enabled."
+        "OutOfMemoryError lors de l'import GraphHopper. Vérifiez que l'option 'Large Heap' est activée."
     internal const val GRAPH_CACHE_DIR = "graph-cache"
     private const val ENCODED_VALUES = "foot_access,foot_average_speed,foot_priority"
     private const val MILLIS_TO_SECONDS = 1000.0
