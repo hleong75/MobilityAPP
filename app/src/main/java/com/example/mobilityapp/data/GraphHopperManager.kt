@@ -32,7 +32,7 @@ object GraphHopperManager {
     private const val ELEVATION_PROVIDER_NOOP = "noop"
     private const val PROFILE_FOOT = "foot"
     private const val OUT_OF_MEMORY_MESSAGE =
-        "OutOfMemoryError lors de l'import GraphHopper. Vérifiez que l'option 'Large Heap' est activée."
+        "OutOfMemoryError during GraphHopper import. Verify that the Large Heap option is enabled."
     private const val DATA_ACCESS_TYPE = "MMAP_STORE"
     internal const val GRAPH_CACHE_DIR = "graph-cache"
     private const val ENCODED_VALUES = "foot_access,foot_average_speed,foot_priority"
@@ -77,9 +77,9 @@ object GraphHopperManager {
     ) {
         withContext(Dispatchers.IO) {
             try {
-                Log.e(LOG_TAG, "Vérification des fichiers...")
-                Log.e(LOG_TAG, "Fichier OSM trouvé : ${osmFile.exists()}")
-                Log.e(LOG_TAG, "Démarrage import GraphHopper...")
+                Log.e(LOG_TAG, "Verifying files...")
+                Log.e(LOG_TAG, "OSM file found: ${osmFile.exists()}")
+                Log.e(LOG_TAG, "Starting GraphHopper import...")
                 val graphCacheDir = File(graphRoot, GRAPH_CACHE_DIR)
                 val config = GraphHopperConfig().apply {
                     putObject("graph.location", graphCacheDir.absolutePath)
@@ -101,7 +101,7 @@ object GraphHopperManager {
                     ptRouter = router
                     _isReady.value = true
                 }
-                Log.e(LOG_TAG, "Import terminé !")
+                Log.e(LOG_TAG, "Import completed!")
             } catch (e: OutOfMemoryError) {
                 logOutOfMemory(e)
                 throw e
@@ -144,9 +144,9 @@ object GraphHopperManager {
     private suspend fun loadGraph(cacheDir: File) {
         withContext(Dispatchers.IO) {
             try {
-                Log.e(LOG_TAG, "Vérification des fichiers...")
-                Log.e(LOG_TAG, "Fichier OSM trouvé : ${cacheDir.exists()}")
-                Log.e(LOG_TAG, "Démarrage import GraphHopper...")
+                Log.e(LOG_TAG, "Verifying files...")
+                Log.e(LOG_TAG, "OSM file found: ${cacheDir.exists()}")
+                Log.e(LOG_TAG, "Starting GraphHopper import...")
                 val config = GraphHopperConfig().apply {
                     putObject("graph.location", cacheDir.absolutePath)
                     putObject("graph.dataaccess", DATA_ACCESS_TYPE)
@@ -164,7 +164,7 @@ object GraphHopperManager {
                     ptRouter = router
                     _isReady.value = true
                 }
-                Log.e(LOG_TAG, "Import terminé !")
+                Log.e(LOG_TAG, "Import completed!")
             } catch (e: OutOfMemoryError) {
                 logOutOfMemory(e)
                 throw e
