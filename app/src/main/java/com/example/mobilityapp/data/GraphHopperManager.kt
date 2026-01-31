@@ -30,6 +30,7 @@ import java.util.Date
 object GraphHopperManager {
     private const val LOG_TAG = "GH_DEBUG"
     private const val DEFAULT_USE_MMAP_STORE = true
+    private const val ELEVATION_PROVIDER_NOOP = "noop"
     private const val PROFILE_FOOT = "foot"
     internal const val GRAPH_CACHE_DIR = "graph-cache"
     private const val ENCODED_VALUES = "foot_access,foot_average_speed,foot_priority"
@@ -84,6 +85,8 @@ object GraphHopperManager {
                     putObject("datareader.file", osmFile.absolutePath)
                     putObject("gtfs.file", gtfsFile.absolutePath)
                     putObject("graph.dataaccess", dataAccessType(useMmapStore))
+                    putObject("graph.elevation.provider", ELEVATION_PROVIDER_NOOP)
+                    putObject("gtfs.trip_based", false)
                     applyProfiles(this)
                 }
 
@@ -98,7 +101,10 @@ object GraphHopperManager {
                     _isReady.value = true
                 }
                 Log.e(LOG_TAG, "Import terminé !")
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
+                if (e is OutOfMemoryError) {
+                    Log.e(LOG_TAG, "OutOfMemoryError lors de l'import GraphHopper. Vérifiez que l'option 'Large Heap' est activée.")
+                }
                 Log.e(LOG_TAG, "CRASH", e)
                 throw e
             }
@@ -143,6 +149,8 @@ object GraphHopperManager {
                 val config = GraphHopperConfig().apply {
                     putObject("graph.location", cacheDir.absolutePath)
                     putObject("graph.dataaccess", dataAccessType(useMmapStore))
+                    putObject("graph.elevation.provider", ELEVATION_PROVIDER_NOOP)
+                    putObject("gtfs.trip_based", false)
                     applyProfiles(this)
                 }
                 val graph = GraphHopperGtfs(config)
@@ -156,7 +164,10 @@ object GraphHopperManager {
                     _isReady.value = true
                 }
                 Log.e(LOG_TAG, "Import terminé !")
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
+                if (e is OutOfMemoryError) {
+                    Log.e(LOG_TAG, "OutOfMemoryError lors de l'import GraphHopper. Vérifiez que l'option 'Large Heap' est activée.")
+                }
                 Log.e(LOG_TAG, "CRASH", e)
                 throw e
             }
@@ -224,7 +235,7 @@ object GraphHopperManager {
     }
 
     private fun dataAccessType(useMmapStore: Boolean): String {
-        return if (useMmapStore) "MMAP_STORE" else "RAM_STORE"
+        return "MMAP_STORE"
     }
 
 }
