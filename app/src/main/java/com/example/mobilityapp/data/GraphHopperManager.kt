@@ -29,9 +29,10 @@ import java.util.Date
 
 object GraphHopperManager {
     private const val LOG_TAG = "GH_DEBUG"
-    private const val DEFAULT_USE_MMAP_STORE = true
     private const val ELEVATION_PROVIDER_NOOP = "noop"
     private const val PROFILE_FOOT = "foot"
+    private const val OUT_OF_MEMORY_MESSAGE =
+        "OutOfMemoryError lors de l'import GraphHopper. Vérifiez que l'option 'Large Heap' est activée."
     internal const val GRAPH_CACHE_DIR = "graph-cache"
     private const val ENCODED_VALUES = "foot_access,foot_average_speed,foot_priority"
     private const val MILLIS_TO_SECONDS = 1000.0
@@ -48,13 +49,13 @@ object GraphHopperManager {
     @Volatile
     private var graphConfig: GraphHopperConfig? = null
 
-    suspend fun init(path: String, useMmapStore: Boolean = DEFAULT_USE_MMAP_STORE) {
+    suspend fun init(path: String) {
         if (_isReady.value) {
             return
         }
         val cacheDir = File(path, GRAPH_CACHE_DIR)
         if (cacheDir.exists()) {
-            loadGraph(cacheDir, useMmapStore)
+            loadGraph(cacheDir)
         }
     }
 
@@ -71,8 +72,7 @@ object GraphHopperManager {
     suspend fun importData(
         osmFile: File,
         gtfsFile: File,
-        graphRoot: File,
-        useMmapStore: Boolean = DEFAULT_USE_MMAP_STORE
+        graphRoot: File
     ) {
         withContext(Dispatchers.IO) {
             try {
@@ -84,7 +84,7 @@ object GraphHopperManager {
                     putObject("graph.location", graphCacheDir.absolutePath)
                     putObject("datareader.file", osmFile.absolutePath)
                     putObject("gtfs.file", gtfsFile.absolutePath)
-                    putObject("graph.dataaccess", dataAccessType(useMmapStore))
+                    putObject("graph.dataaccess", dataAccessType())
                     putObject("graph.elevation.provider", ELEVATION_PROVIDER_NOOP)
                     putObject("gtfs.trip_based", false)
                     applyProfiles(this)
@@ -103,7 +103,7 @@ object GraphHopperManager {
                 Log.e(LOG_TAG, "Import terminé !")
             } catch (e: Throwable) {
                 if (e is OutOfMemoryError) {
-                    Log.e(LOG_TAG, "OutOfMemoryError lors de l'import GraphHopper. Vérifiez que l'option 'Large Heap' est activée.")
+                    Log.e(LOG_TAG, OUT_OF_MEMORY_MESSAGE)
                 }
                 Log.e(LOG_TAG, "CRASH", e)
                 throw e
@@ -140,7 +140,7 @@ object GraphHopperManager {
         return mapResponse(response, mode)
     }
 
-    private suspend fun loadGraph(cacheDir: File, useMmapStore: Boolean) {
+    private suspend fun loadGraph(cacheDir: File) {
         withContext(Dispatchers.IO) {
             try {
                 Log.e(LOG_TAG, "Vérification des fichiers...")
@@ -148,7 +148,7 @@ object GraphHopperManager {
                 Log.e(LOG_TAG, "Démarrage import GraphHopper...")
                 val config = GraphHopperConfig().apply {
                     putObject("graph.location", cacheDir.absolutePath)
-                    putObject("graph.dataaccess", dataAccessType(useMmapStore))
+                    putObject("graph.dataaccess", dataAccessType())
                     putObject("graph.elevation.provider", ELEVATION_PROVIDER_NOOP)
                     putObject("gtfs.trip_based", false)
                     applyProfiles(this)
@@ -166,7 +166,7 @@ object GraphHopperManager {
                 Log.e(LOG_TAG, "Import terminé !")
             } catch (e: Throwable) {
                 if (e is OutOfMemoryError) {
-                    Log.e(LOG_TAG, "OutOfMemoryError lors de l'import GraphHopper. Vérifiez que l'option 'Large Heap' est activée.")
+                    Log.e(LOG_TAG, OUT_OF_MEMORY_MESSAGE)
                 }
                 Log.e(LOG_TAG, "CRASH", e)
                 throw e
@@ -234,7 +234,7 @@ object GraphHopperManager {
         ).createWithoutRealtimeFeed()
     }
 
-    private fun dataAccessType(useMmapStore: Boolean): String {
+    private fun dataAccessType(): String {
         return "MMAP_STORE"
     }
 
