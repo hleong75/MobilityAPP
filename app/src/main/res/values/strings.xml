@@ -9,7 +9,7 @@
     <string name="graphhopper_notification_channel_description">Import des données de transport</string>
     <string name="graphhopper_force_update">Forcer la mise à jour</string>
     <string name="graphhopper_force_update_progress">Mise à jour en cours...</string>
-    <string name="graphhopper_force_update_description">Supprimer le cache GraphHopper et relancer l'importation.</string>
+    <string name="graphhopper_force_update_description">Supprimer le cache GraphHopper et relancer l\'importation.</string>
     <string name="settings_title">Paramètres</string>
     <string name="settings_close">Fermer</string>
     
