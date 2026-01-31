@@ -7,29 +7,42 @@ import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withContext
 import java.io.File
+
+sealed class InitializationState {
+    data object MissingFiles : InitializationState()
+    data object NeedsImport : InitializationState()
+    data object Importing : InitializationState()
+    data object Ready : InitializationState()
+    data class Error(val message: String) : InitializationState()
+}
 
 object GraphHopperInitializer {
     private const val DEFAULT_OSM_FILE = "data.osm.pbf"
     private const val DEFAULT_GTFS_FILE = "data.gtfs.zip"
     private const val WORK_NAME = "graphhopper_import"
+    private const val READY_TIMEOUT_MS = 60_000L
+    const val DEFAULT_ERROR_MESSAGE = "Erreur: Import GraphHopper"
 
-    suspend fun start(context: Context) {
-        withContext(Dispatchers.IO) {
+    fun start(context: Context): Flow<InitializationState> = flow {
+        try {
             val graphRoot = context.filesDir
             val dataDir = context.getExternalFilesDir(null) ?: graphRoot
             val osmFile = File(dataDir, DEFAULT_OSM_FILE)
             val gtfsFile = File(dataDir, DEFAULT_GTFS_FILE)
-            if (!osmFile.exists() || !gtfsFile.exists()) {
-                val errorMessage = when {
-                    !osmFile.exists() && !gtfsFile.exists() -> "Fichier OSM et GTFS manquants"
-                    !osmFile.exists() -> "Fichier OSM manquant"
-                    else -> "Fichier GTFS manquant"
-                }
-                Log.e("GH_DEBUG", "Vérification des fichiers...")
-                Log.e("GH_DEBUG", "Fichier OSM trouvé : ${osmFile.exists()}")
-                throw IllegalStateException(errorMessage)
+            val missingFiles = getMissingFiles(osmFile, gtfsFile)
+            if (missingFiles.isNotEmpty()) {
+                Log.e("GH_DEBUG", "Fichiers manquants: ${missingFiles.joinToString(", ")}")
+                emit(InitializationState.MissingFiles)
+                return@flow
             }
             val shouldRebuild = shouldRebuildGraph(graphRoot, osmFile, gtfsFile)
             if (shouldRebuild) {
@@ -39,11 +52,26 @@ object GraphHopperInitializer {
             val graphCacheDir = File(graphRoot, GraphHopperManager.GRAPH_CACHE_DIR)
             if (graphCacheDir.exists() && !shouldRebuild) {
                 GraphHopperManager.init(graphRoot.absolutePath)
-                return@withContext
+                emit(InitializationState.Ready)
+                return@flow
             }
+            emit(InitializationState.NeedsImport)
             enqueueImport(context, graphRoot, osmFile, gtfsFile)
+            emit(InitializationState.Importing)
+            withTimeout(READY_TIMEOUT_MS) {
+                GraphHopperManager.isReady.filter { it }.first()
+            }
+            emit(InitializationState.Ready)
+        } catch (e: TimeoutCancellationException) {
+            Log.e("GH_DEBUG", "Timeout during GraphHopper init", e)
+            WorkManager.getInstance(context)
+                .cancelUniqueWork(WORK_NAME)
+            emit(InitializationState.Error("Délai dépassé après 60s"))
+        } catch (e: Exception) {
+            Log.e("GH_DEBUG", "CRASH", e)
+            emit(InitializationState.Error(e.message ?: DEFAULT_ERROR_MESSAGE))
         }
-    }
+    }.flowOn(Dispatchers.IO)
 
     suspend fun forceRebuild(context: Context) {
         withContext(Dispatchers.IO) {
@@ -51,17 +79,33 @@ object GraphHopperInitializer {
             val dataDir = context.getExternalFilesDir(null) ?: graphRoot
             val osmFile = File(dataDir, DEFAULT_OSM_FILE)
             val gtfsFile = File(dataDir, DEFAULT_GTFS_FILE)
-            if (!osmFile.exists() || !gtfsFile.exists()) {
-                val errorMessage = when {
-                    !osmFile.exists() && !gtfsFile.exists() -> "Fichier OSM et GTFS manquants"
-                    !osmFile.exists() -> "Fichier OSM manquant"
-                    else -> "Fichier GTFS manquant"
-                }
-                throw IllegalStateException(errorMessage)
+            val missingFiles = getMissingFiles(osmFile, gtfsFile)
+            if (missingFiles.isNotEmpty()) {
+                Log.e("GH_DEBUG", "Fichiers manquants: ${missingFiles.joinToString(", ")}")
+                throw IllegalStateException("Fichiers manquants: ${missingFiles.joinToString(", ")}")
             }
             deleteGraphCache(graphRoot)
             GraphHopperManager.reset()
             enqueueImport(context, graphRoot, osmFile, gtfsFile)
+        }
+    }
+
+    fun getMissingFiles(context: Context): List<String> {
+        val graphRoot = context.filesDir
+        val dataDir = context.getExternalFilesDir(null) ?: graphRoot
+        val osmFile = File(dataDir, DEFAULT_OSM_FILE)
+        val gtfsFile = File(dataDir, DEFAULT_GTFS_FILE)
+        return getMissingFiles(osmFile, gtfsFile)
+    }
+
+    private fun getMissingFiles(osmFile: File, gtfsFile: File): List<String> {
+        return buildList {
+            if (!osmFile.exists()) {
+                add(DEFAULT_OSM_FILE)
+            }
+            if (!gtfsFile.exists()) {
+                add(DEFAULT_GTFS_FILE)
+            }
         }
     }
 

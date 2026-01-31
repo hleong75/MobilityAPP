@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.mobilityapp.R
 import com.example.mobilityapp.data.GraphHopperInitializer
+import com.example.mobilityapp.data.InitializationState
 import com.example.mobilityapp.data.GraphHopperManager
 import com.example.mobilityapp.data.RoutingRepository
 import com.example.mobilityapp.domain.model.Itinerary
@@ -54,16 +55,29 @@ class MapViewModel(
             try {
                 // Update step 1: Loading map (initial step)
                 updateLoadingStep(0, true)
-                // Note: The actual GraphHopper initialization steps cannot be tracked
-                // as GraphHopperInitializer.start() is a blocking call without progress callbacks
-                GraphHopperInitializer.start(context)
-                // Mark all remaining steps as complete after initialization
-                updateLoadingStep(1, true)
-                updateLoadingStep(2, true)
-                updateLoadingStep(3, true)
+                GraphHopperInitializer.start(context).collect { state ->
+                    when (state) {
+                        InitializationState.MissingFiles -> {
+                            val missingFiles = GraphHopperInitializer.getMissingFiles(context)
+                            _graphError.value = "$MISSING_FILES_PREFIX ${missingFiles.joinToString(", ")}"
+                        }
+                        InitializationState.Ready -> {
+                            updateLoadingStep(1, true)
+                            updateLoadingStep(2, true)
+                            updateLoadingStep(3, true)
+                        }
+                        is InitializationState.Error -> {
+                            _graphError.value = state.message
+                        }
+                        InitializationState.NeedsImport,
+                        InitializationState.Importing -> {
+                            // Progress steps already shown; no additional UI updates needed here.
+                        }
+                    }
+                }
             } catch (e: Exception) {
                 Log.e("GH_DEBUG", "CRASH", e)
-                _graphError.value = e.message?.let { "Erreur: $it" } ?: "Erreur: Import GraphHopper"
+                _graphError.value = e.message?.let { "Erreur: $it" } ?: GraphHopperInitializer.DEFAULT_ERROR_MESSAGE
             }
         }
     }
@@ -78,13 +92,18 @@ class MapViewModel(
 
     fun forceUpdateGraph(context: Context) {
         _graphError.value = null
+        val missingFiles = GraphHopperInitializer.getMissingFiles(context)
+        if (missingFiles.isNotEmpty()) {
+            _graphError.value = "$MISSING_FILES_PREFIX ${missingFiles.joinToString(", ")}"
+            return
+        }
         _forceUpdateInProgress.value = true
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 GraphHopperInitializer.forceRebuild(context)
             } catch (e: Exception) {
                 Log.e("GH_DEBUG", "CRASH", e)
-                _graphError.value = e.message?.let { "Erreur: $it" } ?: "Erreur: Import GraphHopper"
+                _graphError.value = e.message?.let { "Erreur: $it" } ?: GraphHopperInitializer.DEFAULT_ERROR_MESSAGE
             } finally {
                 _forceUpdateInProgress.value = false
             }
@@ -121,5 +140,9 @@ class MapViewModel(
             "[${coordinate.longitude},${coordinate.latitude}]"
         }
         return """{"type":"FeatureCollection","features":[{"type":"Feature","geometry":{"type":"LineString","coordinates":[${coordinateArray}]}}]}"""
+    }
+
+    companion object {
+        private const val MISSING_FILES_PREFIX = "Fichiers manquants:"
     }
 }
