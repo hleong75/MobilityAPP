@@ -210,7 +210,7 @@ object GraphHopperInitializer {
             .build()
         val request = OneTimeWorkRequestBuilder<GraphHopperImportWorker>()
             .setInputData(inputData)
-            .setExpedited(OutOfQuotaPolicy.RUN_AS_EXPEDITED_WORK_REQUEST)
+            .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
             .build()
         workManager.enqueueUniqueWork(WORK_NAME, ExistingWorkPolicy.REPLACE, request)
     }
