@@ -17,7 +17,6 @@ import androidx.work.WorkerParameters
 import com.example.mobilityapp.R
 import com.example.mobilityapp.presentation.MainActivity
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -51,10 +50,14 @@ class GraphHopperImportWorker(
             val osmFile = File(osmPath)
             val gtfsFile = File(gtfsPath)
             updateProgress(10)
-            val osmReadDuration = measureReadDuration(osmFile)
-            Log.w(PERF_TAG, "Lecture OSM: ${osmReadDuration}ms")
-            val gtfsReadDuration = measureReadDuration(gtfsFile)
-            Log.w(PERF_TAG, "Lecture GTFS: ${gtfsReadDuration}ms")
+            val osmReadStart = System.currentTimeMillis()
+            val osmTimestamp = osmFile.lastModified()
+            val osmSize = osmFile.length()
+            Log.w(PERF_TAG, "Lecture OSM (metadata): ${System.currentTimeMillis() - osmReadStart}ms")
+            val gtfsReadStart = System.currentTimeMillis()
+            val gtfsTimestamp = gtfsFile.lastModified()
+            val gtfsSize = gtfsFile.length()
+            Log.w(PERF_TAG, "Lecture GTFS (metadata): ${System.currentTimeMillis() - gtfsReadStart}ms")
             try {
                 val graphBuildStart = System.currentTimeMillis()
                 GraphHopperManager.importData(
@@ -68,7 +71,12 @@ class GraphHopperImportWorker(
             }
             updateProgress(80)
             try {
-                val metadata = GraphMetadataStore.fromFiles(osmFile, gtfsFile)
+                val metadata = GraphMetadata(
+                    osmTimestamp = osmTimestamp,
+                    osmSize = osmSize,
+                    gtfsTimestamp = gtfsTimestamp,
+                    gtfsSize = gtfsSize
+                )
                 GraphMetadataStore.write(
                     File(graphRoot, GraphMetadataStore.VERSION_FILE_NAME),
                     metadata
@@ -144,20 +152,6 @@ class GraphHopperImportWorker(
                 .putInt(KEY_PROGRESS_PERCENT, percent)
                 .build()
         )
-    }
-
-    private suspend fun measureReadDuration(file: File): Long {
-        return withContext(Dispatchers.IO) {
-            val start = System.currentTimeMillis()
-            file.inputStream().use { input ->
-                val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-                while (true) {
-                    val read = input.read(buffer)
-                    if (read <= 0) break
-                }
-            }
-            System.currentTimeMillis() - start
-        }
     }
 
     private fun cleanPartialGraphCache(graphRoot: File) {
