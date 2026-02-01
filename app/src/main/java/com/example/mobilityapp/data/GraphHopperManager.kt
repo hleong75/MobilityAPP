@@ -97,24 +97,7 @@ object GraphHopperManager {
                     putObject("datareader.file", osmFile.absolutePath)
                     putObject("gtfs.file", gtfsFile.absolutePath)
                     
-                    // RAM management for 1GB files
-                    putObject("graph.dataaccess", DATA_ACCESS_TYPE)
-                    putObject("graph.ch.prepare_threads", "1")
-                    
-                    // Block network access (Air-Gapped mode)
-                    putObject("graph.elevation.provider", ELEVATION_PROVIDER_NOOP)
-                    putObject("graph.elevation.cache_dir", "")
-                    
-                    // Reduce graph complexity by ignoring small isolated segments (saves RAM)
-                    putObject("prepare.min_network_size", "200")
-                    putObject("prepare.min_one_way_network_size", "200")
-                    
-                    // Disable street name storage to reduce memory usage during import
-                    putObject("datareader.instructions", "false")
-                    
-                    // Disable heavy optimizations for faster import
-                    putObject("prepare.ch.weightings", "no")
-                    putObject("prepare.lm.weightings", "no")
+                    applyMemoryOptimizations(this)
                     
                     putObject("gtfs.trip_based", false)
                     applyProfiles(this)
@@ -191,24 +174,7 @@ object GraphHopperManager {
                 val config = GraphHopperConfig().apply {
                     putObject("graph.location", cacheDir.absolutePath)
                     
-                    // RAM management for 1GB files
-                    putObject("graph.dataaccess", DATA_ACCESS_TYPE)
-                    putObject("graph.ch.prepare_threads", "1")
-                    
-                    // Block network access (Air-Gapped mode)
-                    putObject("graph.elevation.provider", ELEVATION_PROVIDER_NOOP)
-                    putObject("graph.elevation.cache_dir", "")
-                    
-                    // Reduce graph complexity by ignoring small isolated segments (saves RAM)
-                    putObject("prepare.min_network_size", "200")
-                    putObject("prepare.min_one_way_network_size", "200")
-                    
-                    // Disable street name storage to reduce memory usage during import
-                    putObject("datareader.instructions", "false")
-                    
-                    // Disable heavy optimizations
-                    putObject("prepare.ch.weightings", "no")
-                    putObject("prepare.lm.weightings", "no")
+                    applyMemoryOptimizations(this)
                     
                     putObject("gtfs.trip_based", false)
                     applyProfiles(this)
@@ -293,6 +259,27 @@ object GraphHopperManager {
                     )
             )
         )
+    }
+    
+    private fun applyMemoryOptimizations(config: GraphHopperConfig) {
+        // RAM management for 1GB files
+        config.putObject("graph.dataaccess", DATA_ACCESS_TYPE)
+        config.putObject("graph.ch.prepare_threads", "1")
+        
+        // Block network access (Air-Gapped mode)
+        config.putObject("graph.elevation.provider", ELEVATION_PROVIDER_NOOP)
+        config.putObject("graph.elevation.cache_dir", "")
+        
+        // Reduce graph complexity by ignoring small isolated segments (saves RAM)
+        config.putObject("prepare.min_network_size", "200")
+        config.putObject("prepare.min_one_way_network_size", "200")
+        
+        // Disable street name storage to reduce memory usage during import
+        config.putObject("datareader.instructions", "false")
+        
+        // Disable heavy optimizations
+        config.putObject("prepare.ch.weightings", "no")
+        config.putObject("prepare.lm.weightings", "no")
     }
 
     private fun buildPtRouter(config: GraphHopperConfig, hopperInstance: GraphHopperGtfs): PtRouter {

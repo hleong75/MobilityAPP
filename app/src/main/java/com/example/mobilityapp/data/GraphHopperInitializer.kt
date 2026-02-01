@@ -36,6 +36,7 @@ object GraphHopperInitializer {
     private const val WORK_NAME = "graphhopper_import"
     private const val READY_TIMEOUT_MS = 60_000L
     private const val MIN_DISK_SPACE_BYTES = 3L * 1024L * 1024L * 1024L // 3 GB
+    private const val BYTES_TO_GB = 1024.0 * 1024.0 * 1024.0
     const val DEFAULT_ERROR_MESSAGE = "Erreur: Import GraphHopper"
 
     fun start(context: Context): Flow<InitializationState> = flow {
@@ -52,11 +53,9 @@ object GraphHopperInitializer {
             }
             
             // Check available disk space before import
-            val availableSpace = graphRoot.usableSpace
-            if (availableSpace < MIN_DISK_SPACE_BYTES) {
-                val availableGB = availableSpace / (1024.0 * 1024.0 * 1024.0)
-                Log.e("GH_DEBUG", "Espace disque insuffisant: ${String.format("%.2f", availableGB)} GB disponible, 3 GB requis")
-                emit(InitializationState.Error("Espace disque insuffisant: ${String.format("%.2f", availableGB)} GB disponible, 3 GB requis"))
+            val diskSpaceError = checkDiskSpace(graphRoot)
+            if (diskSpaceError != null) {
+                emit(InitializationState.Error(diskSpaceError))
                 return@flow
             }
             
@@ -103,11 +102,9 @@ object GraphHopperInitializer {
             }
             
             // Check available disk space before rebuild
-            val availableSpace = graphRoot.usableSpace
-            if (availableSpace < MIN_DISK_SPACE_BYTES) {
-                val availableGB = availableSpace / (1024.0 * 1024.0 * 1024.0)
-                Log.e("GH_DEBUG", "Espace disque insuffisant: ${String.format("%.2f", availableGB)} GB disponible, 3 GB requis")
-                throw IllegalStateException("Espace disque insuffisant: ${String.format("%.2f", availableGB)} GB disponible, 3 GB requis")
+            val diskSpaceError = checkDiskSpace(graphRoot)
+            if (diskSpaceError != null) {
+                throw IllegalStateException(diskSpaceError)
             }
             
             // Force deletion of ALL cache content before starting
@@ -254,6 +251,17 @@ object GraphHopperInitializer {
         if (metadataFile.exists()) {
             metadataFile.delete()
         }
+    }
+    
+    private fun checkDiskSpace(graphRoot: File): String? {
+        val availableSpace = graphRoot.usableSpace
+        if (availableSpace < MIN_DISK_SPACE_BYTES) {
+            val availableGB = availableSpace / BYTES_TO_GB
+            val errorMsg = "Espace disque insuffisant: ${String.format("%.2f", availableGB)} GB disponible, 3 GB requis"
+            Log.e("GH_DEBUG", errorMsg)
+            return errorMsg
+        }
+        return null
     }
 
     private fun shouldRebuildGraph(graphRoot: File, osmFile: File, gtfsFile: File): Boolean {
