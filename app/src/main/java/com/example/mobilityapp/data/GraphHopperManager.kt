@@ -80,20 +80,60 @@ object GraphHopperManager {
                 Log.i(LOG_TAG, "Verifying files...")
                 Log.i(LOG_TAG, "OSM file found: ${osmFile.exists()}")
                 Log.i(LOG_TAG, "Starting GraphHopper import...")
+                
+                // Security cleanup: Delete graph-cache directory to start fresh
                 val graphCacheDir = File(graphRoot, GRAPH_CACHE_DIR)
+                if (graphCacheDir.exists()) {
+                    Log.i(LOG_TAG, "Deleting existing graph-cache directory for clean import...")
+                    if (graphCacheDir.deleteRecursively()) {
+                        Log.i(LOG_TAG, "Graph-cache directory deleted successfully")
+                    } else {
+                        Log.w(LOG_TAG, "Failed to delete graph-cache directory completely")
+                    }
+                }
+                
                 val config = GraphHopperConfig().apply {
                     putObject("graph.location", graphCacheDir.absolutePath)
                     putObject("datareader.file", osmFile.absolutePath)
                     putObject("gtfs.file", gtfsFile.absolutePath)
+                    
+                    // RAM management for 1GB files
                     putObject("graph.dataaccess", DATA_ACCESS_TYPE)
+                    putObject("graph.ch.prepare_threads", "1")
+                    
+                    // Block network access (Air-Gapped mode)
                     putObject("graph.elevation.provider", ELEVATION_PROVIDER_NOOP)
+                    putObject("graph.elevation.cache_dir", "")
+                    
+                    // Disable heavy optimizations for faster import
+                    putObject("prepare.ch.weightings", "no")
+                    putObject("prepare.lm.weightings", "no")
+                    
                     putObject("gtfs.trip_based", false)
                     applyProfiles(this)
                 }
 
                 val gtfsHopper = GraphHopperGtfs(config)
                 gtfsHopper.init(config)
-                gtfsHopper.importOrLoad()
+                
+                // Diagnostic logging with timeout detection
+                try {
+                    Log.i(LOG_TAG, "Starting hopper.importOrLoad()...")
+                    val importStartTime = System.currentTimeMillis()
+                    gtfsHopper.importOrLoad()
+                    val importDuration = System.currentTimeMillis() - importStartTime
+                    Log.i(LOG_TAG, "hopper.importOrLoad() completed in ${importDuration}ms")
+                } catch (e: Exception) {
+                    val errorMsg = e.message ?: e.toString()
+                    Log.e(LOG_TAG, "Import/Load failed: $errorMsg", e)
+                    if (errorMsg.contains("timeout", ignoreCase = true) || 
+                        errorMsg.contains("timed out", ignoreCase = true)) {
+                        Log.e(LOG_TAG, "TIMEOUT DETECTED: The operation exceeded the allowed time limit")
+                        Log.e(LOG_TAG, "Timeout details: $errorMsg")
+                    }
+                    throw e
+                }
+                
                 val router = buildPtRouter(config, gtfsHopper)
                 synchronized(this@GraphHopperManager) {
                     hopper = gtfsHopper
@@ -146,17 +186,46 @@ object GraphHopperManager {
             try {
                 Log.i(LOG_TAG, "Verifying files...")
                 Log.i(LOG_TAG, "Cache directory found: ${cacheDir.exists()}")
-                Log.i(LOG_TAG, "Starting GraphHopper import...")
+                Log.i(LOG_TAG, "Starting GraphHopper load...")
                 val config = GraphHopperConfig().apply {
                     putObject("graph.location", cacheDir.absolutePath)
+                    
+                    // RAM management for 1GB files
                     putObject("graph.dataaccess", DATA_ACCESS_TYPE)
+                    putObject("graph.ch.prepare_threads", "1")
+                    
+                    // Block network access (Air-Gapped mode)
                     putObject("graph.elevation.provider", ELEVATION_PROVIDER_NOOP)
+                    putObject("graph.elevation.cache_dir", "")
+                    
+                    // Disable heavy optimizations
+                    putObject("prepare.ch.weightings", "no")
+                    putObject("prepare.lm.weightings", "no")
+                    
                     putObject("gtfs.trip_based", false)
                     applyProfiles(this)
                 }
                 val graph = GraphHopperGtfs(config)
                 graph.init(config)
-                graph.load()
+                
+                // Diagnostic logging with timeout detection
+                try {
+                    Log.i(LOG_TAG, "Starting graph.load()...")
+                    val loadStartTime = System.currentTimeMillis()
+                    graph.load()
+                    val loadDuration = System.currentTimeMillis() - loadStartTime
+                    Log.i(LOG_TAG, "graph.load() completed in ${loadDuration}ms")
+                } catch (e: Exception) {
+                    val errorMsg = e.message ?: e.toString()
+                    Log.e(LOG_TAG, "Load failed: $errorMsg", e)
+                    if (errorMsg.contains("timeout", ignoreCase = true) || 
+                        errorMsg.contains("timed out", ignoreCase = true)) {
+                        Log.e(LOG_TAG, "TIMEOUT DETECTED: The operation exceeded the allowed time limit")
+                        Log.e(LOG_TAG, "Timeout details: $errorMsg")
+                    }
+                    throw e
+                }
+                
                 val router = buildPtRouter(config, graph)
                 synchronized(this@GraphHopperManager) {
                     hopper = graph
@@ -164,7 +233,7 @@ object GraphHopperManager {
                     ptRouter = router
                     _isReady.value = true
                 }
-                Log.i(LOG_TAG, "Import completed!")
+                Log.i(LOG_TAG, "Load completed!")
             } catch (e: OutOfMemoryError) {
                 logOutOfMemory(e)
                 throw e
