@@ -38,7 +38,7 @@ class GraphHopperImportWorker(
                 setForeground(createForegroundInfo())
             } catch (t: Throwable) {
                 Log.e(ERROR_TAG, "Failed to promote GraphHopper import to foreground", t)
-                Log.e("CRITICAL_ERROR", "Détail : ${t.stackTraceToString()}")
+                Log.e("CRITICAL_ERROR", "Detail: ${t.stackTraceToString()}")
                 return Result.failure(buildFailureData(t))
             }
             
@@ -107,7 +107,7 @@ class GraphHopperImportWorker(
         } catch (t: Throwable) {
             // Catch all errors including OutOfMemoryError
             Log.e("GH_CRASH", "ERREUR CRITIQUE", t)
-            Log.e("CRITICAL_ERROR", "Détail : ${t.stackTraceToString()}")
+            Log.e("CRITICAL_ERROR", "Detail: ${t.stackTraceToString()}")
             graphRoot?.let { cleanupAfterFailure(it) }
             return Result.failure(buildFailureData(t))
         } finally {
@@ -190,7 +190,7 @@ class GraphHopperImportWorker(
         error: Throwable
     ): Result {
         Log.e(ERROR_TAG, message, error)
-        Log.e("CRITICAL_ERROR", "Détail : ${error.stackTraceToString()}")
+        Log.e("CRITICAL_ERROR", "Detail: ${error.stackTraceToString()}")
         cleanupAfterFailure(graphRoot)
         return Result.failure(buildFailureData(error))
     }

@@ -37,7 +37,7 @@ object GraphHopperInitializer {
     private const val READY_TIMEOUT_MS = 60_000L
     private const val MIN_DISK_SPACE_BYTES = 3L * 1024L * 1024L * 1024L // 3 GB
     private const val BYTES_TO_GB = 1024.0 * 1024.0 * 1024.0
-    const val DEFAULT_ERROR_MESSAGE = "Erreur: Import GraphHopper"
+    const val DEFAULT_ERROR_MESSAGE = "Error: GraphHopper import"
 
     fun start(context: Context): Flow<InitializationState> = flow {
         try {
@@ -46,13 +46,13 @@ object GraphHopperInitializer {
             val gtfsFile = File(graphRoot, DEFAULT_GTFS_FILE)
             val missingFiles = getMissingFiles(osmFile, gtfsFile)
             if (missingFiles.isNotEmpty()) {
-                Log.e("GH_DEBUG", "Fichiers manquants: ${missingFiles.joinToString(", ")}")
+                Log.e("GH_DEBUG", "Missing files: ${missingFiles.joinToString(", ")}")
                 emit(InitializationState.MissingFiles(missingFiles))
                 return@flow
             }
             if (!osmFile.canRead() || !gtfsFile.canRead()) {
-                Log.e("GH_DEBUG", "Fichiers illisibles: osm=${osmFile.canRead()}, gtfs=${gtfsFile.canRead()}")
-                emit(InitializationState.Error("Fichiers illisibles. Vérifiez les permissions."))
+                Log.e("GH_DEBUG", "Unreadable files: osm=${osmFile.canRead()}, gtfs=${gtfsFile.canRead()}")
+                emit(InitializationState.Error("Unreadable files. Check permissions."))
                 return@flow
             }
             
@@ -86,7 +86,7 @@ object GraphHopperInitializer {
             Log.e("GH_DEBUG", "Timeout during GraphHopper init", e)
             WorkManager.getInstance(context)
                 .cancelUniqueWork(WORK_NAME)
-            emit(InitializationState.Error("Délai dépassé après 60s"))
+            emit(InitializationState.Error("Timeout after 60s"))
         } catch (e: Exception) {
             Log.e("GH_DEBUG", "CRASH", e)
             emit(InitializationState.Error(e.message ?: DEFAULT_ERROR_MESSAGE))
@@ -100,12 +100,12 @@ object GraphHopperInitializer {
             val gtfsFile = File(graphRoot, DEFAULT_GTFS_FILE)
             val missingFiles = getMissingFiles(osmFile, gtfsFile)
             if (missingFiles.isNotEmpty()) {
-                Log.e("GH_DEBUG", "Fichiers manquants: ${missingFiles.joinToString(", ")}")
-                throw IllegalStateException("Fichiers manquants: ${missingFiles.joinToString(", ")}")
+                Log.e("GH_DEBUG", "Missing files: ${missingFiles.joinToString(", ")}")
+                throw IllegalStateException("Missing files: ${missingFiles.joinToString(", ")}")
             }
             if (!osmFile.canRead() || !gtfsFile.canRead()) {
-                Log.e("GH_DEBUG", "Fichiers illisibles: osm=${osmFile.canRead()}, gtfs=${gtfsFile.canRead()}")
-                throw IllegalStateException("Fichiers illisibles. Vérifiez les permissions.")
+                Log.e("GH_DEBUG", "Unreadable files: osm=${osmFile.canRead()}, gtfs=${gtfsFile.canRead()}")
+                throw IllegalStateException("Unreadable files. Check permissions.")
             }
             
             // Check available disk space before rebuild
@@ -128,11 +128,11 @@ object GraphHopperInitializer {
             val gtfsFile = File(graphRoot, DEFAULT_GTFS_FILE)
             val missingFiles = getMissingFiles(osmFile, gtfsFile)
             if (missingFiles.isNotEmpty()) {
-                Log.e("GH_DEBUG", "Fichiers manquants: ${missingFiles.joinToString(", ")}")
+                Log.e("GH_DEBUG", "Missing files: ${missingFiles.joinToString(", ")}")
                 return@withContext
             }
             if (!osmFile.canRead() || !gtfsFile.canRead()) {
-                Log.e("GH_DEBUG", "Fichiers illisibles: osm=${osmFile.canRead()}, gtfs=${gtfsFile.canRead()}")
+                Log.e("GH_DEBUG", "Unreadable files: osm=${osmFile.canRead()}, gtfs=${gtfsFile.canRead()}")
                 return@withContext
             }
             val versionFile = File(graphRoot, GraphMetadataStore.VERSION_FILE_NAME)
