@@ -17,6 +17,7 @@ import androidx.work.WorkerParameters
 import com.example.mobilityapp.R
 import com.example.mobilityapp.presentation.MainActivity
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -50,12 +51,10 @@ class GraphHopperImportWorker(
             val osmFile = File(osmPath)
             val gtfsFile = File(gtfsPath)
             updateProgress(10)
-            val osmReadStart = System.currentTimeMillis()
-            osmFile.length()
-            Log.w(PERF_TAG, "Lecture OSM: ${System.currentTimeMillis() - osmReadStart}ms")
-            val gtfsReadStart = System.currentTimeMillis()
-            gtfsFile.length()
-            Log.w(PERF_TAG, "Lecture GTFS: ${System.currentTimeMillis() - gtfsReadStart}ms")
+            val osmReadDuration = measureReadDuration(osmFile)
+            Log.w(PERF_TAG, "Lecture OSM: ${osmReadDuration}ms")
+            val gtfsReadDuration = measureReadDuration(gtfsFile)
+            Log.w(PERF_TAG, "Lecture GTFS: ${gtfsReadDuration}ms")
             try {
                 val graphBuildStart = System.currentTimeMillis()
                 GraphHopperManager.importData(
@@ -145,6 +144,20 @@ class GraphHopperImportWorker(
                 .putInt(KEY_PROGRESS_PERCENT, percent)
                 .build()
         )
+    }
+
+    private suspend fun measureReadDuration(file: File): Long {
+        return withContext(Dispatchers.IO) {
+            val start = System.currentTimeMillis()
+            file.inputStream().use { input ->
+                val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+                while (true) {
+                    val read = input.read(buffer)
+                    if (read <= 0) break
+                }
+            }
+            System.currentTimeMillis() - start
+        }
     }
 
     private fun cleanPartialGraphCache(graphRoot: File) {
