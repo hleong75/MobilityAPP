@@ -8,6 +8,7 @@ import android.os.Build
 import androidx.work.Data
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.OutOfQuotaPolicy
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import kotlinx.coroutines.Dispatchers
@@ -188,6 +189,7 @@ object GraphHopperInitializer {
             .build()
         val request = OneTimeWorkRequestBuilder<GraphHopperImportWorker>()
             .setInputData(inputData)
+            .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
             .build()
         workManager.enqueueUniqueWork(WORK_NAME, ExistingWorkPolicy.REPLACE, request)
     }
