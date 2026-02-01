@@ -29,8 +29,11 @@ import java.util.Date
 
 object GraphHopperManager {
     private const val LOG_TAG = "GH_DEBUG"
-    private const val DEFAULT_USE_MMAP_STORE = true
+    private const val ELEVATION_PROVIDER_NOOP = "noop"
     private const val PROFILE_FOOT = "foot"
+    private const val OUT_OF_MEMORY_MESSAGE =
+        "OutOfMemoryError during GraphHopper import. Verify that the Large Heap option is enabled."
+    private const val DATA_ACCESS_TYPE = "MMAP_STORE"
     internal const val GRAPH_CACHE_DIR = "graph-cache"
     private const val ENCODED_VALUES = "foot_access,foot_average_speed,foot_priority"
     private const val MILLIS_TO_SECONDS = 1000.0
@@ -47,13 +50,13 @@ object GraphHopperManager {
     @Volatile
     private var graphConfig: GraphHopperConfig? = null
 
-    suspend fun init(path: String, useMmapStore: Boolean = DEFAULT_USE_MMAP_STORE) {
+    suspend fun init(path: String) {
         if (_isReady.value) {
             return
         }
         val cacheDir = File(path, GRAPH_CACHE_DIR)
         if (cacheDir.exists()) {
-            loadGraph(cacheDir, useMmapStore)
+            loadGraph(cacheDir)
         }
     }
 
@@ -70,20 +73,21 @@ object GraphHopperManager {
     suspend fun importData(
         osmFile: File,
         gtfsFile: File,
-        graphRoot: File,
-        useMmapStore: Boolean = DEFAULT_USE_MMAP_STORE
+        graphRoot: File
     ) {
         withContext(Dispatchers.IO) {
             try {
-                Log.e(LOG_TAG, "Vérification des fichiers...")
-                Log.e(LOG_TAG, "Fichier OSM trouvé : ${osmFile.exists()}")
-                Log.e(LOG_TAG, "Démarrage import GraphHopper...")
+                Log.i(LOG_TAG, "Verifying files...")
+                Log.i(LOG_TAG, "OSM file found: ${osmFile.exists()}")
+                Log.i(LOG_TAG, "Starting GraphHopper import...")
                 val graphCacheDir = File(graphRoot, GRAPH_CACHE_DIR)
                 val config = GraphHopperConfig().apply {
                     putObject("graph.location", graphCacheDir.absolutePath)
                     putObject("datareader.file", osmFile.absolutePath)
                     putObject("gtfs.file", gtfsFile.absolutePath)
-                    putObject("graph.dataaccess", dataAccessType(useMmapStore))
+                    putObject("graph.dataaccess", DATA_ACCESS_TYPE)
+                    putObject("graph.elevation.provider", ELEVATION_PROVIDER_NOOP)
+                    putObject("gtfs.trip_based", false)
                     applyProfiles(this)
                 }
 
@@ -97,7 +101,10 @@ object GraphHopperManager {
                     ptRouter = router
                     _isReady.value = true
                 }
-                Log.e(LOG_TAG, "Import terminé !")
+                Log.i(LOG_TAG, "Import completed!")
+            } catch (e: OutOfMemoryError) {
+                logOutOfMemory(e)
+                throw e
             } catch (e: Exception) {
                 Log.e(LOG_TAG, "CRASH", e)
                 throw e
@@ -134,15 +141,17 @@ object GraphHopperManager {
         return mapResponse(response, mode)
     }
 
-    private suspend fun loadGraph(cacheDir: File, useMmapStore: Boolean) {
+    private suspend fun loadGraph(cacheDir: File) {
         withContext(Dispatchers.IO) {
             try {
-                Log.e(LOG_TAG, "Vérification des fichiers...")
-                Log.e(LOG_TAG, "Fichier OSM trouvé : ${cacheDir.exists()}")
-                Log.e(LOG_TAG, "Démarrage import GraphHopper...")
+                Log.i(LOG_TAG, "Verifying files...")
+                Log.i(LOG_TAG, "Cache directory found: ${cacheDir.exists()}")
+                Log.i(LOG_TAG, "Starting GraphHopper import...")
                 val config = GraphHopperConfig().apply {
                     putObject("graph.location", cacheDir.absolutePath)
-                    putObject("graph.dataaccess", dataAccessType(useMmapStore))
+                    putObject("graph.dataaccess", DATA_ACCESS_TYPE)
+                    putObject("graph.elevation.provider", ELEVATION_PROVIDER_NOOP)
+                    putObject("gtfs.trip_based", false)
                     applyProfiles(this)
                 }
                 val graph = GraphHopperGtfs(config)
@@ -155,7 +164,10 @@ object GraphHopperManager {
                     ptRouter = router
                     _isReady.value = true
                 }
-                Log.e(LOG_TAG, "Import terminé !")
+                Log.i(LOG_TAG, "Import completed!")
+            } catch (e: OutOfMemoryError) {
+                logOutOfMemory(e)
+                throw e
             } catch (e: Exception) {
                 Log.e(LOG_TAG, "CRASH", e)
                 throw e
@@ -223,8 +235,8 @@ object GraphHopperManager {
         ).createWithoutRealtimeFeed()
     }
 
-    private fun dataAccessType(useMmapStore: Boolean): String {
-        return if (useMmapStore) "MMAP_STORE" else "RAM_STORE"
+    private fun logOutOfMemory(error: OutOfMemoryError) {
+        Log.e(LOG_TAG, OUT_OF_MEMORY_MESSAGE, error)
     }
 
 }
