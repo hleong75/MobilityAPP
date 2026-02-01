@@ -124,13 +124,7 @@ object GraphHopperManager {
                     val importDuration = System.currentTimeMillis() - importStartTime
                     Log.i(LOG_TAG, "hopper.importOrLoad() completed in ${importDuration}ms")
                 } catch (e: Exception) {
-                    val errorMsg = e.message ?: e.toString()
-                    Log.e(LOG_TAG, "Import/Load failed: $errorMsg", e)
-                    if (errorMsg.contains("timeout", ignoreCase = true) || 
-                        errorMsg.contains("timed out", ignoreCase = true)) {
-                        Log.e(LOG_TAG, "TIMEOUT DETECTED: The operation exceeded the allowed time limit")
-                        Log.e(LOG_TAG, "Timeout details: $errorMsg")
-                    }
+                    logTimeoutIfDetected(e, "Import/Load")
                     throw e
                 }
                 
@@ -216,13 +210,7 @@ object GraphHopperManager {
                     val loadDuration = System.currentTimeMillis() - loadStartTime
                     Log.i(LOG_TAG, "graph.load() completed in ${loadDuration}ms")
                 } catch (e: Exception) {
-                    val errorMsg = e.message ?: e.toString()
-                    Log.e(LOG_TAG, "Load failed: $errorMsg", e)
-                    if (errorMsg.contains("timeout", ignoreCase = true) || 
-                        errorMsg.contains("timed out", ignoreCase = true)) {
-                        Log.e(LOG_TAG, "TIMEOUT DETECTED: The operation exceeded the allowed time limit")
-                        Log.e(LOG_TAG, "Timeout details: $errorMsg")
-                    }
+                    logTimeoutIfDetected(e, "Load")
                     throw e
                 }
                 
@@ -306,6 +294,16 @@ object GraphHopperManager {
 
     private fun logOutOfMemory(error: OutOfMemoryError) {
         Log.e(LOG_TAG, OUT_OF_MEMORY_MESSAGE, error)
+    }
+
+    private fun logTimeoutIfDetected(e: Exception, operation: String) {
+        val errorMsg = e.message ?: e.toString()
+        Log.e(LOG_TAG, "$operation failed: $errorMsg", e)
+        if (errorMsg.contains("timeout", ignoreCase = true) || 
+            errorMsg.contains("timed out", ignoreCase = true)) {
+            Log.e(LOG_TAG, "TIMEOUT DETECTED: The operation exceeded the allowed time limit")
+            Log.e(LOG_TAG, "Timeout details: $errorMsg")
+        }
     }
 
 }
