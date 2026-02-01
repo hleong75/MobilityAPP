@@ -42,8 +42,8 @@ object GraphHopperInitializer {
     fun start(context: Context): Flow<InitializationState> = flow {
         try {
             val graphRoot = context.filesDir
-            val osmFile = File(graphRoot, DEFAULT_OSM_FILE)
-            val gtfsFile = File(graphRoot, DEFAULT_GTFS_FILE)
+            val osmFile = resolveGraphFile(context, DEFAULT_OSM_FILE)
+            val gtfsFile = resolveGraphFile(context, DEFAULT_GTFS_FILE)
             val missingFiles = getMissingFiles(osmFile, gtfsFile)
             if (missingFiles.isNotEmpty()) {
                 Log.e("GH_DEBUG", "Missing files: ${missingFiles.joinToString(", ")}")
@@ -96,8 +96,8 @@ object GraphHopperInitializer {
     suspend fun forceRebuild(context: Context) {
         withContext(Dispatchers.IO) {
             val graphRoot = context.filesDir
-            val osmFile = File(graphRoot, DEFAULT_OSM_FILE)
-            val gtfsFile = File(graphRoot, DEFAULT_GTFS_FILE)
+            val osmFile = resolveGraphFile(context, DEFAULT_OSM_FILE)
+            val gtfsFile = resolveGraphFile(context, DEFAULT_GTFS_FILE)
             val missingFiles = getMissingFiles(osmFile, gtfsFile)
             if (missingFiles.isNotEmpty()) {
                 Log.e("GH_DEBUG", "Missing files: ${missingFiles.joinToString(", ")}")
@@ -124,8 +124,8 @@ object GraphHopperInitializer {
     suspend fun forceRefreshCheck(context: Context) {
         withContext(Dispatchers.IO) {
             val graphRoot = context.filesDir
-            val osmFile = File(graphRoot, DEFAULT_OSM_FILE)
-            val gtfsFile = File(graphRoot, DEFAULT_GTFS_FILE)
+            val osmFile = resolveGraphFile(context, DEFAULT_OSM_FILE)
+            val gtfsFile = resolveGraphFile(context, DEFAULT_GTFS_FILE)
             val missingFiles = getMissingFiles(osmFile, gtfsFile)
             if (missingFiles.isNotEmpty()) {
                 Log.e("GH_DEBUG", "Missing files: ${missingFiles.joinToString(", ")}")
@@ -151,15 +151,13 @@ object GraphHopperInitializer {
     }
 
     fun getMissingFiles(context: Context): List<String> {
-        val graphRoot = context.filesDir
-        val osmFile = File(graphRoot, DEFAULT_OSM_FILE)
-        val gtfsFile = File(graphRoot, DEFAULT_GTFS_FILE)
+        val osmFile = resolveGraphFile(context, DEFAULT_OSM_FILE)
+        val gtfsFile = resolveGraphFile(context, DEFAULT_GTFS_FILE)
         return getMissingFiles(osmFile, gtfsFile)
     }
 
     fun getOsmLastModified(context: Context): Long? {
-        val graphRoot = context.filesDir
-        val osmFile = File(graphRoot, DEFAULT_OSM_FILE)
+        val osmFile = resolveGraphFile(context, DEFAULT_OSM_FILE)
         return osmFile.takeIf { it.exists() }?.lastModified()
     }
 
@@ -175,21 +173,48 @@ object GraphHopperInitializer {
                 return false
             }
         }
-        val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
         val osmFile = File(graphRoot, DEFAULT_OSM_FILE)
         val gtfsFile = File(graphRoot, DEFAULT_GTFS_FILE)
         val missingFiles = getMissingFiles(osmFile, gtfsFile)
+        val sourceDirs = getExternalSearchDirs(context, includePublicDownloads = true)
         var copiedAny = false
         missingFiles.forEach { fileName ->
-            val source = File(downloadsDir, fileName)
             val target = File(graphRoot, fileName)
-            if (source.exists() && source.isFile) {
+            val source = sourceDirs
+                .asSequence()
+                .map { File(it, fileName) }
+                .firstOrNull { it.exists() && it.isFile }
+            if (source != null) {
                 runCatching { source.copyTo(target, overwrite = true) }
                     .onFailure { Log.e("GH_DEBUG", "Failed to copy $fileName from downloads.", it) }
                     .onSuccess { copiedAny = true }
             }
         }
         return copiedAny
+    }
+
+    private fun resolveGraphFile(context: Context, fileName: String): File {
+        val graphRoot = context.filesDir
+        val internalFile = File(graphRoot, fileName)
+        if (internalFile.exists() && internalFile.isFile) {
+            return internalFile
+        }
+        val sourceDirs = getExternalSearchDirs(context, includePublicDownloads = false)
+        val externalFile = sourceDirs
+            .asSequence()
+            .map { File(it, fileName) }
+            .firstOrNull { it.exists() && it.isFile }
+        return externalFile ?: internalFile
+    }
+
+    private fun getExternalSearchDirs(context: Context, includePublicDownloads: Boolean): List<File> {
+        val sourceDirs = mutableListOf<File>()
+        context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.let { sourceDirs.add(it) }
+        context.getExternalFilesDir(null)?.let { sourceDirs.add(it) }
+        if (includePublicDownloads) {
+            sourceDirs.add(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS))
+        }
+        return sourceDirs
     }
 
     private fun getMissingFiles(osmFile: File, gtfsFile: File): List<String> {
