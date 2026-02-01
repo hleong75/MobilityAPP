@@ -53,11 +53,11 @@ class GraphHopperImportWorker(
             val osmReadStart = System.currentTimeMillis()
             val osmTimestamp = osmFile.lastModified()
             val osmSize = osmFile.length()
-            Log.w(PERF_TAG, "OSM metadata read: ${System.currentTimeMillis() - osmReadStart}ms")
+            Log.w(PERF_TAG, "Lecture OSM (métadonnées): ${System.currentTimeMillis() - osmReadStart}ms")
             val gtfsReadStart = System.currentTimeMillis()
             val gtfsTimestamp = gtfsFile.lastModified()
             val gtfsSize = gtfsFile.length()
-            Log.w(PERF_TAG, "GTFS metadata read: ${System.currentTimeMillis() - gtfsReadStart}ms")
+            Log.w(PERF_TAG, "Lecture GTFS (métadonnées): ${System.currentTimeMillis() - gtfsReadStart}ms")
             try {
                 val graphBuildStart = System.currentTimeMillis()
                 GraphHopperManager.importData(
@@ -65,7 +65,7 @@ class GraphHopperImportWorker(
                     gtfsFile = gtfsFile,
                     graphRoot = graphRoot
                 )
-                Log.w(PERF_TAG, "Graph creation: ${System.currentTimeMillis() - graphBuildStart}ms")
+                Log.w(PERF_TAG, "Création Graphe: ${System.currentTimeMillis() - graphBuildStart}ms")
             } catch (e: Exception) {
                 return handleFailure(graphRoot, "GraphHopper data import failed", e)
             }
@@ -99,7 +99,7 @@ class GraphHopperImportWorker(
         } catch (e: Exception) {
             Log.e(ERROR_TAG, "GraphHopper import failed", e)
             graphRoot?.let { cleanupAfterFailure(it) }
-            Result.failure(buildFailureData(e))
+            return Result.failure(buildFailureData(e))
         } finally {
             if (startTime > 0L) {
                 val durationMs = SystemClock.elapsedRealtime() - startTime
