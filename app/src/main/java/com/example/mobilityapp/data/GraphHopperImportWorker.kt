@@ -105,7 +105,7 @@ class GraphHopperImportWorker(
             throw e
         } catch (e: Throwable) {
             // Catch all errors including OutOfMemoryError
-            Log.e("FATAL", "Détails du crash: ${e.message}", e)
+            Log.e("GH_CRASH", "ERREUR CRITIQUE", e)
             graphRoot?.let { cleanupAfterFailure(it) }
             return Result.failure(buildFailureData(e))
         } finally {
