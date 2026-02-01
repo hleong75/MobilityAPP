@@ -29,28 +29,54 @@ class GraphHopperImportWorker(
     private val cacheCleaned = AtomicBoolean(false)
 
     override suspend fun doWork(): Result {
-        val osmPath = inputData.getString(KEY_OSM_PATH) ?: return Result.failure()
-        val gtfsPath = inputData.getString(KEY_GTFS_PATH) ?: return Result.failure()
-        val graphRootPath = inputData.getString(KEY_GRAPH_ROOT_PATH) ?: return Result.failure()
-        val graphRoot = File(graphRootPath)
-        val osmFile = File(osmPath)
-        val gtfsFile = File(gtfsPath)
-        val startTime = SystemClock.elapsedRealtime()
+        var startTime = 0L
+        var graphRoot: File? = null
         return try {
             setForeground(createForegroundInfo())
+            startTime = SystemClock.elapsedRealtime()
+            val osmPath = inputData.getString(KEY_OSM_PATH) ?: run {
+                Log.e(ERROR_TAG, "Missing OSM path for GraphHopper import")
+                return Result.failure()
+            }
+            val gtfsPath = inputData.getString(KEY_GTFS_PATH) ?: run {
+                Log.e(ERROR_TAG, "Missing GTFS path for GraphHopper import")
+                return Result.failure()
+            }
+            val graphRootPath = inputData.getString(KEY_GRAPH_ROOT_PATH) ?: run {
+                Log.e(ERROR_TAG, "Missing graph root path for GraphHopper import")
+                return Result.failure()
+            }
+            graphRoot = File(graphRootPath)
+            val osmFile = File(osmPath)
+            val gtfsFile = File(gtfsPath)
             updateProgress(10)
+            val osmReadStart = System.currentTimeMillis()
+            val osmTimestamp = osmFile.lastModified()
+            val osmSize = osmFile.length()
+            Log.w(PERF_TAG, "Lecture OSM (métadonnées): ${System.currentTimeMillis() - osmReadStart}ms")
+            val gtfsReadStart = System.currentTimeMillis()
+            val gtfsTimestamp = gtfsFile.lastModified()
+            val gtfsSize = gtfsFile.length()
+            Log.w(PERF_TAG, "Lecture GTFS (métadonnées): ${System.currentTimeMillis() - gtfsReadStart}ms")
             try {
+                val graphBuildStart = System.currentTimeMillis()
                 GraphHopperManager.importData(
                     osmFile = osmFile,
                     gtfsFile = gtfsFile,
                     graphRoot = graphRoot
                 )
+                Log.w(PERF_TAG, "Création Graphe: ${System.currentTimeMillis() - graphBuildStart}ms")
             } catch (e: Exception) {
                 return handleFailure(graphRoot, "GraphHopper data import failed", e)
             }
             updateProgress(80)
             try {
-                val metadata = GraphMetadataStore.fromFiles(osmFile, gtfsFile)
+                val metadata = GraphMetadata(
+                    osmTimestamp = osmTimestamp,
+                    osmSize = osmSize,
+                    gtfsTimestamp = gtfsTimestamp,
+                    gtfsSize = gtfsSize
+                )
                 GraphMetadataStore.write(
                     File(graphRoot, GraphMetadataStore.VERSION_FILE_NAME),
                     metadata
@@ -68,13 +94,17 @@ class GraphHopperImportWorker(
             Result.success()
         } catch (e: CancellationException) {
             Log.w(TAG, "GraphHopper import cancelled", e)
-            cleanupAfterFailure(graphRoot)
+            graphRoot?.let { cleanupAfterFailure(it) }
             throw e
         } catch (e: Exception) {
-            return handleFailure(graphRoot, "GraphHopper import failed", e)
+            Log.e(ERROR_TAG, "GraphHopper import failed", e)
+            graphRoot?.let { cleanupAfterFailure(it) }
+            return Result.failure(buildFailureData(e))
         } finally {
-            val durationMs = SystemClock.elapsedRealtime() - startTime
-            Log.i(TAG, "GraphHopper import duration: ${durationMs}ms")
+            if (startTime > 0L) {
+                val durationMs = SystemClock.elapsedRealtime() - startTime
+                Log.i(TAG, "GraphHopper import duration: ${durationMs}ms")
+            }
         }
     }
 
@@ -151,7 +181,7 @@ class GraphHopperImportWorker(
         message: String,
         error: Exception
     ): Result {
-        Log.e(TAG, message, error)
+        Log.e(ERROR_TAG, message, error)
         cleanupAfterFailure(graphRoot)
         return Result.failure(buildFailureData(error))
     }
@@ -172,5 +202,7 @@ class GraphHopperImportWorker(
         private const val NOTIFICATION_CHANNEL_ID = "graphhopper_import_channel"
         private const val NOTIFICATION_ID = 1001
         private const val TAG = "GraphHopperImport"
+        private const val PERF_TAG = "GH_PERF"
+        private const val ERROR_TAG = "GH_ERROR"
     }
 }
