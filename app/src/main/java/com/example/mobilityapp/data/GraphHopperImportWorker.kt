@@ -29,11 +29,15 @@ class GraphHopperImportWorker(
     private val cacheCleaned = AtomicBoolean(false)
 
     override suspend fun doWork(): Result {
-        setForeground(createForegroundInfo())
-        var startTime = 0L
+        try {
+            setForeground(createForegroundInfo())
+        } catch (e: Exception) {
+            Log.e(ERROR_TAG, "Failed to promote GraphHopper import to foreground", e)
+            return Result.failure(buildFailureData(e))
+        }
+        val startTime = SystemClock.elapsedRealtime()
         var graphRoot: File? = null
         return try {
-            startTime = SystemClock.elapsedRealtime()
             val osmPath = inputData.getString(KEY_OSM_PATH) ?: run {
                 Log.e(ERROR_TAG, "Missing OSM path for GraphHopper import")
                 return Result.failure()
@@ -101,10 +105,8 @@ class GraphHopperImportWorker(
             graphRoot?.let { cleanupAfterFailure(it) }
             return Result.failure(buildFailureData(e))
         } finally {
-            if (startTime > 0L) {
-                val durationMs = SystemClock.elapsedRealtime() - startTime
-                Log.i(TAG, "GraphHopper import duration: ${durationMs}ms")
-            }
+            val durationMs = SystemClock.elapsedRealtime() - startTime
+            Log.i(TAG, "GraphHopper import duration: ${durationMs}ms")
         }
     }
 
