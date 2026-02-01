@@ -94,6 +94,7 @@ object GraphHopperManager {
                 
                 val config = GraphHopperConfig().apply {
                     putObject("graph.location", graphCacheDir.absolutePath)
+                    putObject("graph.elevation.provider", ELEVATION_PROVIDER_NOOP)
                     putObject("datareader.file", osmFile.absolutePath)
                     putObject("gtfs.file", gtfsFile.absolutePath)
                     
@@ -173,6 +174,7 @@ object GraphHopperManager {
                 Log.i(LOG_TAG, "Starting GraphHopper load...")
                 val config = GraphHopperConfig().apply {
                     putObject("graph.location", cacheDir.absolutePath)
+                    putObject("graph.elevation.provider", ELEVATION_PROVIDER_NOOP)
                     
                     applyMemoryOptimizations(this)
                     
@@ -267,8 +269,8 @@ object GraphHopperManager {
         config.putObject("graph.ch.prepare_threads", "1")
         
         // Block network access (Air-Gapped mode)
-        config.putObject("graph.elevation.provider", ELEVATION_PROVIDER_NOOP)
         config.putObject("graph.elevation.cache_dir", "")
+        config.putObject("graph.logging.level", "error")
         
         // Reduce graph complexity by ignoring small isolated segments (saves RAM)
         config.putObject("prepare.min_network_size", "200")

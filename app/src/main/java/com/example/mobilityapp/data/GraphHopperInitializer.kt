@@ -37,18 +37,22 @@ object GraphHopperInitializer {
     private const val READY_TIMEOUT_MS = 60_000L
     private const val MIN_DISK_SPACE_BYTES = 3L * 1024L * 1024L * 1024L // 3 GB
     private const val BYTES_TO_GB = 1024.0 * 1024.0 * 1024.0
-    const val DEFAULT_ERROR_MESSAGE = "Erreur: Import GraphHopper"
+    const val DEFAULT_ERROR_MESSAGE = "Error: GraphHopper import"
 
     fun start(context: Context): Flow<InitializationState> = flow {
         try {
             val graphRoot = context.filesDir
-            val dataDir = context.getExternalFilesDir(null) ?: graphRoot
-            val osmFile = File(dataDir, DEFAULT_OSM_FILE)
-            val gtfsFile = File(dataDir, DEFAULT_GTFS_FILE)
+            val osmFile = File(graphRoot, DEFAULT_OSM_FILE)
+            val gtfsFile = File(graphRoot, DEFAULT_GTFS_FILE)
             val missingFiles = getMissingFiles(osmFile, gtfsFile)
             if (missingFiles.isNotEmpty()) {
-                Log.e("GH_DEBUG", "Fichiers manquants: ${missingFiles.joinToString(", ")}")
+                Log.e("GH_DEBUG", "Missing files: ${missingFiles.joinToString(", ")}")
                 emit(InitializationState.MissingFiles(missingFiles))
+                return@flow
+            }
+            if (!osmFile.canRead() || !gtfsFile.canRead()) {
+                Log.e("GH_DEBUG", "Unreadable files: osm=${osmFile.canRead()}, gtfs=${gtfsFile.canRead()}")
+                emit(InitializationState.Error("Unreadable files. Check permissions."))
                 return@flow
             }
             
@@ -82,7 +86,7 @@ object GraphHopperInitializer {
             Log.e("GH_DEBUG", "Timeout during GraphHopper init", e)
             WorkManager.getInstance(context)
                 .cancelUniqueWork(WORK_NAME)
-            emit(InitializationState.Error("Délai dépassé après 60s"))
+            emit(InitializationState.Error("Timeout after 60s"))
         } catch (e: Exception) {
             Log.e("GH_DEBUG", "CRASH", e)
             emit(InitializationState.Error(e.message ?: DEFAULT_ERROR_MESSAGE))
@@ -92,13 +96,16 @@ object GraphHopperInitializer {
     suspend fun forceRebuild(context: Context) {
         withContext(Dispatchers.IO) {
             val graphRoot = context.filesDir
-            val dataDir = context.getExternalFilesDir(null) ?: graphRoot
-            val osmFile = File(dataDir, DEFAULT_OSM_FILE)
-            val gtfsFile = File(dataDir, DEFAULT_GTFS_FILE)
+            val osmFile = File(graphRoot, DEFAULT_OSM_FILE)
+            val gtfsFile = File(graphRoot, DEFAULT_GTFS_FILE)
             val missingFiles = getMissingFiles(osmFile, gtfsFile)
             if (missingFiles.isNotEmpty()) {
-                Log.e("GH_DEBUG", "Fichiers manquants: ${missingFiles.joinToString(", ")}")
-                throw IllegalStateException("Fichiers manquants: ${missingFiles.joinToString(", ")}")
+                Log.e("GH_DEBUG", "Missing files: ${missingFiles.joinToString(", ")}")
+                throw IllegalStateException("Missing files: ${missingFiles.joinToString(", ")}")
+            }
+            if (!osmFile.canRead() || !gtfsFile.canRead()) {
+                Log.e("GH_DEBUG", "Unreadable files: osm=${osmFile.canRead()}, gtfs=${gtfsFile.canRead()}")
+                throw IllegalStateException("Unreadable files. Check permissions.")
             }
             
             // Check available disk space before rebuild
@@ -117,12 +124,15 @@ object GraphHopperInitializer {
     suspend fun forceRefreshCheck(context: Context) {
         withContext(Dispatchers.IO) {
             val graphRoot = context.filesDir
-            val dataDir = context.getExternalFilesDir(null) ?: graphRoot
-            val osmFile = File(dataDir, DEFAULT_OSM_FILE)
-            val gtfsFile = File(dataDir, DEFAULT_GTFS_FILE)
+            val osmFile = File(graphRoot, DEFAULT_OSM_FILE)
+            val gtfsFile = File(graphRoot, DEFAULT_GTFS_FILE)
             val missingFiles = getMissingFiles(osmFile, gtfsFile)
             if (missingFiles.isNotEmpty()) {
-                Log.e("GH_DEBUG", "Fichiers manquants: ${missingFiles.joinToString(", ")}")
+                Log.e("GH_DEBUG", "Missing files: ${missingFiles.joinToString(", ")}")
+                return@withContext
+            }
+            if (!osmFile.canRead() || !gtfsFile.canRead()) {
+                Log.e("GH_DEBUG", "Unreadable files: osm=${osmFile.canRead()}, gtfs=${gtfsFile.canRead()}")
                 return@withContext
             }
             val versionFile = File(graphRoot, GraphMetadataStore.VERSION_FILE_NAME)
@@ -142,22 +152,19 @@ object GraphHopperInitializer {
 
     fun getMissingFiles(context: Context): List<String> {
         val graphRoot = context.filesDir
-        val dataDir = context.getExternalFilesDir(null) ?: graphRoot
-        val osmFile = File(dataDir, DEFAULT_OSM_FILE)
-        val gtfsFile = File(dataDir, DEFAULT_GTFS_FILE)
+        val osmFile = File(graphRoot, DEFAULT_OSM_FILE)
+        val gtfsFile = File(graphRoot, DEFAULT_GTFS_FILE)
         return getMissingFiles(osmFile, gtfsFile)
     }
 
     fun getOsmLastModified(context: Context): Long? {
         val graphRoot = context.filesDir
-        val dataDir = context.getExternalFilesDir(null) ?: graphRoot
-        val osmFile = File(dataDir, DEFAULT_OSM_FILE)
+        val osmFile = File(graphRoot, DEFAULT_OSM_FILE)
         return osmFile.takeIf { it.exists() }?.lastModified()
     }
 
     fun copyMissingFilesFromDownloads(context: Context): Boolean {
         val graphRoot = context.filesDir
-        val dataDir = context.getExternalFilesDir(null) ?: graphRoot
         val needsPermission = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU
         if (needsPermission) {
             val canReadStorage = context.checkSelfPermission(
@@ -169,13 +176,13 @@ object GraphHopperInitializer {
             }
         }
         val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-        val osmFile = File(dataDir, DEFAULT_OSM_FILE)
-        val gtfsFile = File(dataDir, DEFAULT_GTFS_FILE)
+        val osmFile = File(graphRoot, DEFAULT_OSM_FILE)
+        val gtfsFile = File(graphRoot, DEFAULT_GTFS_FILE)
         val missingFiles = getMissingFiles(osmFile, gtfsFile)
         var copiedAny = false
         missingFiles.forEach { fileName ->
             val source = File(downloadsDir, fileName)
-            val target = File(dataDir, fileName)
+            val target = File(graphRoot, fileName)
             if (source.exists() && source.isFile) {
                 runCatching { source.copyTo(target, overwrite = true) }
                     .onFailure { Log.e("GH_DEBUG", "Failed to copy $fileName from downloads.", it) }
@@ -187,10 +194,10 @@ object GraphHopperInitializer {
 
     private fun getMissingFiles(osmFile: File, gtfsFile: File): List<String> {
         return buildList {
-            if (!osmFile.exists()) {
+            if (!osmFile.exists() || !osmFile.isFile) {
                 add(DEFAULT_OSM_FILE)
             }
-            if (!gtfsFile.exists()) {
+            if (!gtfsFile.exists() || !gtfsFile.isFile) {
                 add(DEFAULT_GTFS_FILE)
             }
         }
