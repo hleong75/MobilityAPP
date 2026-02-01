@@ -36,9 +36,10 @@ class GraphHopperImportWorker(
         return try {
             try {
                 setForeground(createForegroundInfo())
-            } catch (e: Exception) {
-                Log.e(ERROR_TAG, "Failed to promote GraphHopper import to foreground", e)
-                return Result.failure(buildFailureData(e))
+            } catch (t: Throwable) {
+                Log.e(ERROR_TAG, "Failed to promote GraphHopper import to foreground", t)
+                Log.e("CRITICAL_ERROR", "Détail : ${t.stackTraceToString()}")
+                return Result.failure(buildFailureData(t))
             }
             
             val osmPath = inputData.getString(KEY_OSM_PATH) ?: run {
@@ -73,8 +74,8 @@ class GraphHopperImportWorker(
                     graphRoot = graphRoot
                 )
                 Log.w(PERF_TAG, "Création Graphe: ${System.currentTimeMillis() - graphBuildStart}ms")
-            } catch (e: Exception) {
-                return handleFailure(graphRoot, "GraphHopper data import failed", e)
+            } catch (t: Throwable) {
+                return handleFailure(graphRoot, "GraphHopper data import failed", t)
             }
             updateProgress(80)
             try {
@@ -88,14 +89,14 @@ class GraphHopperImportWorker(
                     File(graphRoot, GraphMetadataStore.VERSION_FILE_NAME),
                     metadata
                 )
-            } catch (e: Exception) {
-                return handleFailure(graphRoot, "GraphHopper metadata write failed", e)
+            } catch (t: Throwable) {
+                return handleFailure(graphRoot, "GraphHopper metadata write failed", t)
             }
             updateProgress(90)
             try {
                 GraphHopperManager.init(graphRoot.absolutePath)
-            } catch (e: Exception) {
-                return handleFailure(graphRoot, "GraphHopper init failed", e)
+            } catch (t: Throwable) {
+                return handleFailure(graphRoot, "GraphHopper init failed", t)
             }
             updateProgress(100)
             Result.success()
@@ -103,11 +104,12 @@ class GraphHopperImportWorker(
             Log.w(TAG, "GraphHopper import cancelled", e)
             graphRoot?.let { cleanupAfterFailure(it) }
             throw e
-        } catch (e: Throwable) {
+        } catch (t: Throwable) {
             // Catch all errors including OutOfMemoryError
-            Log.e("GH_CRASH", "ERREUR CRITIQUE", e)
+            Log.e("GH_CRASH", "ERREUR CRITIQUE", t)
+            Log.e("CRITICAL_ERROR", "Détail : ${t.stackTraceToString()}")
             graphRoot?.let { cleanupAfterFailure(it) }
-            return Result.failure(buildFailureData(e))
+            return Result.failure(buildFailureData(t))
         } finally {
             val durationMs = SystemClock.elapsedRealtime() - startTime
             Log.i(TAG, "GraphHopper import duration: ${durationMs}ms")
@@ -185,9 +187,10 @@ class GraphHopperImportWorker(
     private suspend fun handleFailure(
         graphRoot: File,
         message: String,
-        error: Exception
+        error: Throwable
     ): Result {
         Log.e(ERROR_TAG, message, error)
+        Log.e("CRITICAL_ERROR", "Détail : ${error.stackTraceToString()}")
         cleanupAfterFailure(graphRoot)
         return Result.failure(buildFailureData(error))
     }
