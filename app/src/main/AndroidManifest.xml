@@ -18,6 +18,7 @@
     <application
         android:label="@string/app_name"
         android:largeHeap="true"
+        android:hardwareAccelerated="true"
         android:theme="@style/Theme.MobilityAPP">
         <activity
             android:name=".presentation.MainActivity"

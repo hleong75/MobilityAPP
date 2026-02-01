@@ -35,6 +35,7 @@ object GraphHopperInitializer {
     private const val DEFAULT_GTFS_FILE = "data.gtfs.zip"
     private const val WORK_NAME = "graphhopper_import"
     private const val READY_TIMEOUT_MS = 60_000L
+    private const val MIN_DISK_SPACE_BYTES = 3L * 1024L * 1024L * 1024L // 3 GB
     const val DEFAULT_ERROR_MESSAGE = "Erreur: Import GraphHopper"
 
     fun start(context: Context): Flow<InitializationState> = flow {
@@ -49,9 +50,20 @@ object GraphHopperInitializer {
                 emit(InitializationState.MissingFiles(missingFiles))
                 return@flow
             }
+            
+            // Check available disk space before import
+            val availableSpace = graphRoot.usableSpace
+            if (availableSpace < MIN_DISK_SPACE_BYTES) {
+                val availableGB = availableSpace / (1024.0 * 1024.0 * 1024.0)
+                Log.e("GH_DEBUG", "Espace disque insuffisant: ${String.format("%.2f", availableGB)} GB disponible, 3 GB requis")
+                emit(InitializationState.Error("Espace disque insuffisant: ${String.format("%.2f", availableGB)} GB disponible, 3 GB requis"))
+                return@flow
+            }
+            
             val shouldRebuild = shouldRebuildGraph(graphRoot, osmFile, gtfsFile)
             if (shouldRebuild) {
-                deleteGraphCache(graphRoot)
+                // Force deletion of ALL cache content before starting
+                deleteAllCache(graphRoot)
                 GraphHopperManager.reset()
             }
             val graphCacheDir = File(graphRoot, GraphHopperManager.GRAPH_CACHE_DIR)
@@ -89,7 +101,17 @@ object GraphHopperInitializer {
                 Log.e("GH_DEBUG", "Fichiers manquants: ${missingFiles.joinToString(", ")}")
                 throw IllegalStateException("Fichiers manquants: ${missingFiles.joinToString(", ")}")
             }
-            deleteGraphCache(graphRoot)
+            
+            // Check available disk space before rebuild
+            val availableSpace = graphRoot.usableSpace
+            if (availableSpace < MIN_DISK_SPACE_BYTES) {
+                val availableGB = availableSpace / (1024.0 * 1024.0 * 1024.0)
+                Log.e("GH_DEBUG", "Espace disque insuffisant: ${String.format("%.2f", availableGB)} GB disponible, 3 GB requis")
+                throw IllegalStateException("Espace disque insuffisant: ${String.format("%.2f", availableGB)} GB disponible, 3 GB requis")
+            }
+            
+            // Force deletion of ALL cache content before starting
+            deleteAllCache(graphRoot)
             GraphHopperManager.reset()
             enqueueImport(context, graphRoot, osmFile, gtfsFile)
         }
@@ -113,7 +135,9 @@ object GraphHopperInitializer {
             if (!hasChanges || isImportRunning(context)) {
                 return@withContext
             }
-            deleteGraphCache(graphRoot)
+            
+            // Force deletion of ALL cache content before starting
+            deleteAllCache(graphRoot)
             GraphHopperManager.reset()
             enqueueImport(context, graphRoot, osmFile, gtfsFile)
         }
@@ -212,6 +236,24 @@ object GraphHopperInitializer {
             cacheDir.deleteRecursively()
         }
         File(graphRoot, GraphMetadataStore.VERSION_FILE_NAME).delete()
+    }
+    
+    private fun deleteAllCache(graphRoot: File) {
+        // Force deletion of ALL cache content before starting import
+        Log.i("GH_DEBUG", "Suppression agressive de tout le cache...")
+        val cacheDir = File(graphRoot, GraphHopperManager.GRAPH_CACHE_DIR)
+        if (cacheDir.exists()) {
+            val deleted = cacheDir.deleteRecursively()
+            if (deleted) {
+                Log.i("GH_DEBUG", "Cache supprimé avec succès")
+            } else {
+                Log.w("GH_DEBUG", "Échec de la suppression complète du cache")
+            }
+        }
+        val metadataFile = File(graphRoot, GraphMetadataStore.VERSION_FILE_NAME)
+        if (metadataFile.exists()) {
+            metadataFile.delete()
+        }
     }
 
     private fun shouldRebuildGraph(graphRoot: File, osmFile: File, gtfsFile: File): Boolean {

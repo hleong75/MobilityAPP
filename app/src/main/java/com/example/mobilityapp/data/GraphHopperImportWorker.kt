@@ -29,15 +29,18 @@ class GraphHopperImportWorker(
     private val cacheCleaned = AtomicBoolean(false)
 
     override suspend fun doWork(): Result {
-        try {
-            setForeground(createForegroundInfo())
-        } catch (e: Exception) {
-            Log.e(ERROR_TAG, "Failed to promote GraphHopper import to foreground", e)
-            return Result.failure(buildFailureData(e))
-        }
         val startTime = SystemClock.elapsedRealtime()
         var graphRoot: File? = null
+        
+        // Wrap entire doWork in try-catch with Throwable to catch OutOfMemoryError
         return try {
+            try {
+                setForeground(createForegroundInfo())
+            } catch (e: Exception) {
+                Log.e(ERROR_TAG, "Failed to promote GraphHopper import to foreground", e)
+                return Result.failure(buildFailureData(e))
+            }
+            
             val osmPath = inputData.getString(KEY_OSM_PATH) ?: run {
                 Log.e(ERROR_TAG, "Missing OSM path for GraphHopper import")
                 return Result.failure()
@@ -100,8 +103,9 @@ class GraphHopperImportWorker(
             Log.w(TAG, "GraphHopper import cancelled", e)
             graphRoot?.let { cleanupAfterFailure(it) }
             throw e
-        } catch (e: Exception) {
-            Log.e(ERROR_TAG, "GraphHopper import failed", e)
+        } catch (e: Throwable) {
+            // Catch all errors including OutOfMemoryError
+            Log.e("FATAL", "Détails du crash: ${e.message}", e)
             graphRoot?.let { cleanupAfterFailure(it) }
             return Result.failure(buildFailureData(e))
         } finally {
