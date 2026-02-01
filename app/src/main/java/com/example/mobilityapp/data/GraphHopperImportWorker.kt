@@ -29,10 +29,10 @@ class GraphHopperImportWorker(
     private val cacheCleaned = AtomicBoolean(false)
 
     override suspend fun doWork(): Result {
+        setForeground(createForegroundInfo())
         var startTime = 0L
         var graphRoot: File? = null
         return try {
-            setForeground(createForegroundInfo())
             startTime = SystemClock.elapsedRealtime()
             val osmPath = inputData.getString(KEY_OSM_PATH) ?: run {
                 Log.e(ERROR_TAG, "Missing OSM path for GraphHopper import")
