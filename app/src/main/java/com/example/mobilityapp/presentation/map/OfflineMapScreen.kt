@@ -233,8 +233,8 @@ private fun OfflineMapView(mbtilesFile: File, mapViewModel: MapViewModel) {
                         LineLayer(ROUTE_LAYER_BORDER_ID, ROUTE_SOURCE_ID).withProperties(
                             lineColor("#0A1F3D"),
                             lineWidth(8f),
-                            lineCap(Property.LINE_CAP_ROUND),
-                            lineJoin(Property.LINE_JOIN_ROUND)
+                            lineCap(PropertyFactory.LINE_CAP_ROUND),
+                            lineJoin(PropertyFactory.LINE_JOIN_ROUND)
                         ),
                         OFFLINE_LAYER_ID
                     )
@@ -242,8 +242,8 @@ private fun OfflineMapView(mbtilesFile: File, mapViewModel: MapViewModel) {
                         LineLayer(ROUTE_LAYER_ID, ROUTE_SOURCE_ID).withProperties(
                             lineColor("#1C3F7A"),
                             lineWidth(5f),
-                            lineCap(Property.LINE_CAP_ROUND),
-                            lineJoin(Property.LINE_JOIN_ROUND)
+                            lineCap(PropertyFactory.LINE_CAP_ROUND),
+                            lineJoin(PropertyFactory.LINE_JOIN_ROUND)
                         ),
                         ROUTE_LAYER_BORDER_ID
                     )

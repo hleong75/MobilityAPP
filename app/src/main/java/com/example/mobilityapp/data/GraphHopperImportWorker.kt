@@ -4,11 +4,11 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
-import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.SystemClock
 import android.util.Log
 import android.app.PendingIntent
+import androidx.core.content.pm.ServiceInfoCompat
 import androidx.core.app.NotificationCompat
 import androidx.work.CoroutineWorker
 import androidx.work.Data
@@ -133,7 +133,7 @@ class GraphHopperImportWorker(
             .setOngoing(true)
             .build()
         val serviceType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+            ServiceInfoCompat.FOREGROUND_SERVICE_TYPE_DATA_SYNC
         } else {
             0
         }
